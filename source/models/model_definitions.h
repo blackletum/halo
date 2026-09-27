@@ -12,6 +12,7 @@ header included in hcex build.
 /* ---------- headers */
 
 #include "math/real_math.h"
+#include "rasterizer/rasterizer_geometry.h"
 #include "tag_files/tag_files.h"
 #include "tag_files/tag_groups.h"
 
@@ -98,6 +99,25 @@ struct model_region
 	char name[TAG_STRING_LENGTH+1];
 	long unused[8];
 	struct tag_block permutations;			// model_region_permutation
+};
+
+// the xbox element is 0x68 bytes: it stops after the vertex buffer (no local node table)
+struct gbxmodel_geometry_part
+{
+	unsigned long flags; // 0x0
+	short shader_index; // 0x4
+	char prev_part_index; // 0x6
+	char next_part_index; // 0x7
+	short centroid_primary_node_index; // 0x8
+	short centroid_secondary_node_index; // 0xA
+	real centroid_primary_node_weight; // 0xC
+	real centroid_secondary_node_weight; // 0x10
+	real_point3d centroid; // 0x14
+	struct tag_block uncompressed_vertices; // 0x20 model_vertex_uncompressed
+	struct tag_block compressed_vertices; // 0x2C model_vertex_compressed
+	struct tag_block triangles; // 0x38 rasterizer_triangle
+	struct triangle_buffer triangle_buffer; // 0x44
+	struct vertex_buffer vertex_buffer; // 0x54
 };
 
 struct model

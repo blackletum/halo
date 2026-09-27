@@ -58,6 +58,51 @@ struct structure_lightmap
 	struct tag_block materials;	// structure_material
 };
 
+struct structure_lens_flare
+{
+	struct tag_reference lens_flare;
+};
+
+struct structure_lens_flare_marker
+{
+	real_point3d position;
+	char i_direction;
+	char j_direction;
+	char k_direction;
+	byte lens_flare_index;
+};
+
+struct structure_cluster
+{
+	short sky_index;
+	short fog_designator;
+	short background_sound_palette_index;
+	short sound_environment_palette_index;
+	short weather_palette_index;
+	short transitions_to_structure_bsp_index;
+	short first_runtime_decal_index;
+	word runtime_decal_count;
+	long unused1[6];
+	struct tag_block predicted_resources;
+	struct tag_block subclusters;
+	word first_lens_flare_marker_index;
+	word lens_flare_marker_count;
+	struct tag_block surface_indices;
+	struct tag_block mirrors;
+	struct tag_block portal_indices;
+};
+
+struct structure_detail_object_data
+{
+	struct tag_block cells;
+	struct tag_block detail_objects;						// detail_object
+	struct tag_block detail_objects_counts;
+	struct tag_block detail_object_z_reference_vectors;
+	boolean valid;
+	byte pad[3];
+	long unused[3];
+};
+
 struct structure_bsp
 {
 	struct tag_reference lightmap_group;
@@ -75,9 +120,9 @@ struct structure_bsp
 	struct tag_block surfaces;
 	struct tag_block lightmaps;				// structure_lightmap
 	long render_unused[3];
-	struct tag_block lens_flares;
-	struct tag_block lens_flare_markers;
-	struct tag_block clusters;
+	struct tag_block lens_flares;				// structure_lens_flare
+	struct tag_block lens_flare_markers;		// structure_lens_flare_marker
+	struct tag_block clusters;				// structure_cluster
 	struct tag_data cluster_data;
 	struct tag_block cluster_portals;
 	long cluster_unused[3];
@@ -96,7 +141,7 @@ struct structure_bsp
 	struct tag_data sound_cluster_data;
 	long sound_unused[6];
 	struct tag_block markers;
-	struct tag_block detail_object_data;
+	struct tag_block detail_object_data;		// structure_detail_object_data
 	struct tag_block runtime_decals;
 	long diminishing_misc_unused[2];
 	struct leaf_map leaf_map;

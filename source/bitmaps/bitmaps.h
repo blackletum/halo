@@ -93,6 +93,8 @@ short bitmap_mipmap_get_width(struct bitmap_data const *bitmap, short mipmap_ind
 short bitmap_mipmap_get_height(struct bitmap_data const *bitmap, short mipmap_index);
 short bitmap_mipmap_get_depth(struct bitmap_data const *bitmap, short mipmap_index);
 long bitmap_mipmap_get_pixel_data_size(struct bitmap_data const *bitmap, short mipmap_index);
+long bitmap_mipmap_get_row_pitch(struct bitmap_data const *bitmap, short mipmap_index);
+boolean bitmap_verify(struct bitmap_data const *bitmap, boolean import);
 
 /* ---------- prototypes/BITMAP_UTILITIES.C */
 

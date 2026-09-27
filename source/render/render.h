@@ -29,6 +29,14 @@ enum
 	MAXIMUM_QUEUED_LENS_FLARES = 8,
 };
 
+enum
+{
+	_render_model_effect_type_none = 0,
+	_render_model_effect_type_active_camouflage,
+	_render_model_effect_type_transparent_zbuffered,
+	NUMBER_OF_RENDER_MODEL_EFFECT_TYPES
+};
+
 /* ---------- macros */
 
 /* ---------- structures */
@@ -53,6 +61,30 @@ struct render_lighting
 	real_rgb_color shadow_color;
 };
 
+struct render_skinning
+{
+	real_matrix4x3 const *node_matrices; // 0x0
+	short node_matrix_count; // 0x4
+	word pad; // 0x6
+};
+
+struct render_animation
+{
+	real_rgb_color const *colors; // 0x0
+	real const *values; // 0x4
+};
+
+struct render_model_effect
+{
+	short type; // 0x0
+	word pad; // 0x2
+	real intensity; // 0x4
+	real parameter; // 0x8
+	long source_object_index; // 0xC
+	real_point3d source_object_centroid; // 0x10
+	struct shader const *modifier_shader; // 0x1C
+	struct render_animation modifier_animation; // 0x20
+};
 
 struct rendered_cluster
 {

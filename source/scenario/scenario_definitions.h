@@ -34,6 +34,12 @@ struct scenario_object_palette_entry
 	unsigned long unused[8];
 };
 
+struct scenario_detail_object_collection_palette_entry
+{
+	struct tag_reference reference;
+	long unused[8];
+};
+
 struct scenario_object_datum
 {
 	short palette_entry_index;
@@ -131,7 +137,7 @@ struct scenario
 	struct tag_block bsp_switch_trigger_volumes;
 	struct tag_block decals;
 	struct tag_block decal_palette;
-	struct tag_block detail_object_collection_palette;
+	struct tag_block detail_object_collection_palette;	// scenario_detail_object_collection_palette_entry
 	long render_unused[21];
 	struct tag_block ai_actor_palette;
 	struct tag_block ai_encounters;						// encounter_definition

@@ -8,13 +8,54 @@ header included in hcex build.
 #define __DECAL_DEFINITIONS_H
 #pragma once
 
+/* ---------- headers */
+
+#include "real_math.h"
+#include "tag_groups.h"
+#include "shaders/shader_definitions.h"
+
 /* ---------- constants */
+
+enum
+{
+	DECAL_DEFINITION_TAG = 'deca',
+};
 
 /* ---------- macros */
 
 /* ---------- structures */
 
-/* ---------- prototypes/EXAMPLE.C */
+struct decal_definition
+{
+	word flags;
+	short type;
+	short layer;
+	word pad1;
+	struct tag_reference next_decal_in_chain;
+	real radius_lower_bounds;
+	real radius_upper_bounds;
+	long unused1[3];
+	real intensity_lower_bounds;
+	real intensity_upper_bounds;
+	real_rgb_color color_lower_bounds;
+	real_rgb_color color_upper_bounds;
+	long unused2[3];
+	short animation_loop_frame_index;
+	short animation_speed;
+	long unused3[7];
+	real lifetime_lower_bounds;
+	real lifetime_upper_bounds;
+	real decay_time_lower_bounds;
+	real decay_time_upper_bounds;
+	long unused5[3];
+	struct shader_decal shader;
+	real runtime_maximum_sprite_extent;
+	word runtime_incremental_counter;
+	word pad2;
+	long unused6[2];
+};
+
+/* ---------- prototypes/DECAL_DEFINITIONS.C */
 
 /* ---------- globals */
 
