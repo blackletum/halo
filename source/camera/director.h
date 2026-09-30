@@ -10,6 +10,15 @@ header included in hcex build.
 
 /* ---------- constants */
 
+enum
+{
+	_director_perspective_first_person = 0,
+	_director_perspective_third_person,
+	_director_perspective_scripted,
+	_director_perspective_neutral,
+	NUMBER_OF_DIRECTOR_PERSPECTIVE_MODES,
+};
+
 /* ---------- macros */
 
 /* ---------- structures */

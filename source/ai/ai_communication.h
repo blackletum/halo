@@ -63,7 +63,7 @@ enum
 	_ai_communication_melee,
 	_ai_communication_dive,
 	_ai_communication_uncover_exclamation,
-	_ai_communication_falling,
+	_ai_communication_falling_to_death,
 	_ai_communication_leap,
 	_ai_communication_postcombat_alone,
 	_ai_communication_postcombat_unscathed,

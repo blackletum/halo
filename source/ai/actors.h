@@ -195,6 +195,14 @@ enum
 	NUMBER_OF_ACTOR_PERCEPTION_TYPES,
 };
 
+enum
+{
+	_actor_aiming_clear = 0,
+	_actor_aiming_occluded,
+	_actor_aiming_blocked,
+	NUMBER_OF_ACTOR_AIMING_OBSTRUCTION_TYPES,
+};
+
 #define MAXIMUM_NUMBER_OF_ACTORS 256
 #define MAXIMUM_NUMBER_OF_ACTOR_PATHS 32
 
@@ -846,11 +854,11 @@ struct actor_debug_info
 	real collision_t[ACTOR_MAXIMUM_AVOIDANCE_RAYS];
 	real_point3d ray_origin[ACTOR_MAXIMUM_AVOIDANCE_RAYS];
 	real_vector3d ray_direction[ACTOR_MAXIMUM_AVOIDANCE_RAYS];
-	short field_62F8[8][2];
+	short avoid_result[8][2]; /* fake name */
 	real avoid_t[8][2];
 	real_point3d field_6358[8][2];
 	real_vector3d field_6418[8][2];
-	real field_64D8[8];
+	real avoidance_weights[8]; /* fake name */
 	long field_64F8;
 	real field_64FC;
 	short field_6500;
@@ -963,12 +971,12 @@ struct firing_position_evaluation_context
 	real post_evaluation_bound;
 
 	/* fake names */
-	short encounter_count;
-	short consider_count;
-	short valid_count;
-	short nonrejected_count;
-	short post_evaluation_count;
-	short skipped_count;
+	short encounter_count; /* fake name */
+	short consider_count; /* fake name */
+	short valid_count; /* fake name */
+	short nonrejected_count; /* fake name */
+	short post_evaluation_count; /* fake name */
+	short skipped_count; /* fake name */
 };
 
 /* ---------- prototypes/ACTORS.C */

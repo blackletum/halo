@@ -1147,13 +1147,13 @@ static void ai_debug_render_actor(
 			{
 				switch (player_obstruction)
 				{
-				case 0:
+				case _actor_aiming_clear:
 					render_debug_string_at_point(TRUE, ai_debug_drawstack(), "not-occluding-player", global_real_argb_green);
 					break;
-				case 1:
+				case _actor_aiming_occluded:
 					render_debug_string_at_point(TRUE, ai_debug_drawstack(), "occluding-player", global_real_argb_blue);
 					break;
-				case 2:
+				case _actor_aiming_blocked:
 					render_debug_string_at_point(TRUE, ai_debug_drawstack(), "blocking-player", global_real_argb_red);
 					break;
 				default:
@@ -1244,17 +1244,17 @@ static void ai_debug_render_actor(
 					{
 						real_argb_color const *color = global_real_argb_white;
 
-						switch (actor_debug_info->field_62F8[i][j])
+						switch (actor_debug_info->avoid_result[i][j])
 						{
-						case 1:
+						case _actor_vector_avoidance_obstructed_object:
 							color = global_real_argb_aqua;
 							break;
-						case 2:
+						case _actor_vector_avoidance_obstructed_structure:
 							color = global_real_argb_yellow;
 							break;
 						}
 
-						if (actor_debug_info->field_62F8[i][j]>0)
+						if (actor_debug_info->avoid_result[i][j]>0)
 						{
 							real_point3d point0;
 							real_point3d point1;
@@ -1333,7 +1333,7 @@ static void ai_debug_render_actor(
 							temporary,
 							"%d: w%.2f",
 							i,
-							actor_debug_info->field_64D8[i]),
+							actor_debug_info->avoidance_weights[i]),
 							global_real_argb_green);
 					}
 				}
@@ -1815,13 +1815,13 @@ static void ai_debug_render_actor(
 			char textstring[512];
 			real_argb_color const *color;
 
-			if (actor_debug_info->audibility_result==0)
+			if (actor_debug_info->audibility_result==_actor_perception_none)
 			{
 				color = global_real_argb_red;
 				aud_type = "none";
 				
 			}
-			else if (actor_debug_info->audibility_result==1)
+			else if (actor_debug_info->audibility_result==_actor_perception_partial)
 			{
 				color = global_real_argb_blue;
 				aud_type = "part";
@@ -1898,11 +1898,11 @@ static void ai_debug_render_actor(
 
 					switch (prop->state)
 					{
-					case 2:
-					case 3:
+					case _prop_state_becoming_unacknowledged:
+					case _prop_state_acknowledged:
 						render_debug_line(TRUE, &prop_start_point, &prop->head_position, global_real_argb_yellow);
 						break;
-					case 1:
+					case _prop_state_becoming_acknowledged:
 						set_real_point3d(
 							&origin,
 							(1.f-prop->awareness)*prop_start_point.x + prop->awareness*prop->head_position.x,
@@ -1912,11 +1912,11 @@ static void ai_debug_render_actor(
 						render_debug_line(TRUE, &prop_start_point, &origin, global_real_argb_yellow);
 						render_debug_line(TRUE, &origin, &prop->head_position, global_real_argb_black);
 						break;
-					case 0:
+					case _prop_state_unacknowledged:
 						render_debug_line(TRUE, &prop_start_point, &prop->head_position, global_real_argb_black);
 						break;
-					case 4:
-					case 5:
+					case _prop_state_uninspected_orphan:
+					case _prop_state_inspected_orphan:
 						color = iterator.index==actor->meta.interesting_orphan_index ? global_real_argb_purple : global_real_argb_blue;
 						render_debug_line(TRUE, &prop_start_point, &prop->head_position, color);
 						
@@ -2168,7 +2168,7 @@ static void ai_debug_render_actor(
 				}
 				else
 				{
-					if (location->type==1)
+					if (location->type==_pursuit_location_position)
 					{
 						render_debug_line(TRUE, &actor->input.position.head_position, &location->position, actor_action_debug_color(actor_index));
 					}
@@ -2310,7 +2310,7 @@ static void ai_debug_render_actor(
 		/* Targets */
 
 		if ((ai_debug.render_targets || ai_debug.render_targets_last_visible) &&
-			actor->target.target_type!=0 &&
+			actor->target.target_type!=_actor_target_none &&
 			actor->target.target_prop_index!=NONE)
 		{
 			struct prop_datum *prop = prop_get(actor->target.target_prop_index);
@@ -3937,7 +3937,7 @@ static void ai_debug_render_path_storage(
 
 		if (ai_debug.render_paths_destination)
 		{
-			if (path->path_state.destination_valid != 0)
+			if (path->path_state.destination_valid)
 			{
 				render_debug_line_offset(
 					TRUE,
@@ -4044,18 +4044,18 @@ void ai_debug_speak_list(
 		{
 			{ "all", _vocalization_idle_noncombat, TRUE },
 			{ "idle", _vocalization_idle_noncombat, FALSE },
-			{ "involuntary", _vocalization_pain_body_minor, FALSE },
-			{ "hurting people", _vocalization_damaged_friend, FALSE },
+			{ "involuntary", _vocalization_pain_body, FALSE },
+			{ "hurting people", _vocalization_shot_friend, FALSE },
 			{ "being hurt", _vocalization_hurt_friend, FALSE },
 			{ "killing people", _vocalization_killed_friend, FALSE },
-			{ "player kill comments", _vocalization_player_kill_cm, FALSE },
+			{ "player kill comments", _vocalization_player_kill_comment, FALSE },
 			{ "friends dying", _vocalization_friend_died, FALSE },
-			{ "shouting", _vocalization_new_combat_alone, FALSE },
-			{ "group communication", _vocalization_new_combat_group_re, FALSE },
+			{ "shouting", _vocalization_sighted_enemy_new, FALSE },
+			{ "group communication", _vocalization_sighted_enemy_near_reply, FALSE },
 			{ "actions", _vocalization_sighted_friend_player, FALSE },
 			{ "exclamations", _vocalization_surprise, FALSE },
-			{ "post-combat actions", _vocalization_celebration, FALSE },
-			{ "post-combat chatter", _vocalization_alone, FALSE },
+			{ "post-combat actions", _vocalization_celebrate, FALSE },
+			{ "post-combat chatter", _vocalization_postcombat_alone, FALSE },
 			{ NULL, NONE, FALSE }
 		}, *list;
 		struct actor_datum const *actor = actor_get(ai_debug.selected_actor_index);
@@ -4359,7 +4359,7 @@ static void ai_debug_render_idle_look(
 					point_from_line3d(&point, &prop->actor_to_prop, 0.9f, &point);
 
 					if (actor->control.idle_major_active &&
-						actor->control.idle_major_direction.type==1 &&
+						actor->control.idle_major_direction.type==_direction_specification_prop &&
 						actor->control.idle_major_direction.prop_index==ai_debug.prop_idle_look_indicies[index])
 					{
 						color = global_real_argb_yellow;
@@ -5125,7 +5125,7 @@ void ai_debug_change_selected_encounter(
 			sprintf(
 				bsp_string,
 				"%s-bsp %s",
-				TEST_FLAG(encounter_definition->flags, _encounter_manual_bsp_index_specified_bit) ? "manual" : "auto",
+				TEST_FLAG(encounter_definition->flags, _encounter_manual_structure_bsp_bit) ? "manual" : "auto",
 				bsp_index_string);
 		}
 
@@ -5266,7 +5266,7 @@ static long ai_debug_get_this_actor(
 
 		match_assert("c:\\halo\\SOURCE\\ai\\ai_debug.c", 4489, camera != NULL);
 
-		if (director_get_perspective(user_index)==0)
+		if (director_get_perspective(user_index)==_director_perspective_first_person)
 		{
 			long player_index = local_player_get_player_index(user_index);
 
@@ -5627,7 +5627,7 @@ static void ai_debug_render_encounter(
 				{
 					struct pursuit_location *pursuit_location = actor_get_pursuit_location(ai_debug.selected_actor_index);
 
-					current_pursuit_position = pursuit_location && pursuit_location->type==1 && pursuit_location->firing_position_index==firing_position_index;
+					current_pursuit_position = pursuit_location && pursuit_location->type==_pursuit_location_position && pursuit_location->firing_position_index==firing_position_index;
 				}
 			}
 

@@ -26,13 +26,13 @@ enum
 
 enum
 {
-	_encounter_not_initially_created_bit = 0,
-	_encounter_respawn_enabled_bit,
-	_encounter_initially_blind_bit,
-	_encounter_initially_deaf_bit,
-	_encounter_initially_braindead_bit,
+	_encounter_not_initially_placed_bit = 0,
+	_encounter_respawn_enable_bit,
+	_encounter_blind_bit,
+	_encounter_deaf_bit,
+	_encounter_braindead_bit,
 	_encounter_3d_firing_positions_bit,
-	_encounter_manual_bsp_index_specified_bit,
+	_encounter_manual_structure_bsp_bit,
 	NUMBER_OF_ENCOUNTER_FLAGS,
 };
 
