@@ -12,7 +12,28 @@ header included in hcex build.
 
 enum
 {
-	_ai_meter_collision_vector = 21,
+	_ai_meter_encounter, /* fake name */
+	_ai_meter_encounter_active,
+	_ai_meter_actor,
+	_ai_meter_actor_active,
+	_ai_meter_actor_non_dormant,
+	_ai_meter_unit,
+	_ai_meter_unit_active,
+	_ai_meter_unit_non_dormant,
+	_ai_meter_prop,
+	_ai_meter_prop_acknowledged_body,
+	_ai_meter_prop_orphaned_body,
+	_ai_meter_prop_unacknowledged_body,
+	_ai_meter_prop_acknowledged_enemy,
+	_ai_meter_prop_orphaned_enemy,
+	_ai_meter_prop_unacknowledged_enemy,
+	_ai_meter_prop_acknowledged_friend,
+	_ai_meter_prop_orphaned_friend,
+	_ai_meter_prop_unacknowledged_friend,
+	_ai_meter_swarm, /* fake name */
+	_ai_meter_swarm_actor,
+	_ai_meter_swarm_component, /* fake name */
+	_ai_meter_collision_vector,
 	_ai_meter_line_of_sight,
 	_ai_meter_line_of_fire,
 	_ai_meter_path_flood,

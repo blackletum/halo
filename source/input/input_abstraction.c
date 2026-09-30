@@ -530,13 +530,13 @@ void input_abstraction_update(
 				{
 					pause_game = FALSE;
 					error_code = _error_controller_unplugged;
-					show_error = local_player_exists((short)controller_index);
+					show_error = local_player_exists(controller_index);
 				}
 				else
 				{
 					pause_game = TRUE;
 					error_code = _error_controller_unplugged_start_to_continue;
-					show_error = local_player_exists((short)controller_index);
+					show_error = local_player_exists(controller_index);
 				}
 
 				if (show_error == TRUE)

@@ -67,10 +67,10 @@ if (actor->situation.specific_threats[threat_type])						\
 
 /* ---------- prototypes */
 
-void ai_debug_drawstack_setup(union real_point3d const *drawstack_base);
+static void ai_debug_drawstack_setup(real_point3d const *drawstack_base);
 static real_point3d *ai_debug_drawstack(void);
 
-static void ai_debug_highlight_unit(long unit_index, boolean render_exclusive, union real_argb_color const *color);
+static void ai_debug_highlight_unit(long unit_index, boolean render_exclusive, real_argb_color const *color);
 
 static void ai_debug_render_path_nodes(
 	struct path_state *path_state,
@@ -79,7 +79,7 @@ static void ai_debug_render_path_nodes(
 	boolean render_polygons,
 	boolean render_costs,
 	boolean render_closest);
-static void ai_debug_render_surface(struct structure_bsp const *structure_bsp, long surface_index, real offset, union real_argb_color const *color);
+static void ai_debug_render_surface(struct structure_bsp const *structure_bsp, long surface_index, real offset, real_argb_color const *color);
 
 static void ai_debug_render_actor(long actor_index, boolean render_exclusive, long *history_start_time);
 static void ai_debug_render_path_storage(struct path_debug_storage *path);
@@ -156,7 +156,7 @@ static long global_ai_debug_selected_encounter_index = NONE;
 static long global_ai_debug_selected_encounter_time = NONE;
 static unsigned long global_ai_debug_activation_cluster_bit_vector[16];
 
-const real_argb_color global_ai_debug_firing_position_colors[] =
+real_argb_color const global_ai_debug_firing_position_colors[] =
 {
 	{ { 1.f, 1.f, 0.f, 1.f } },
 	{ { 1.f, 0.f, 1.f, 1.f } },
@@ -671,7 +671,7 @@ static real_point3d *ai_debug_drawstack(
 static void ai_debug_highlight_unit(
 	long unit_index,
 	boolean render_exclusive,
-	union real_argb_color const *color)
+	real_argb_color const *color)
 {
 	struct biped_datum *biped = biped_try_and_get(unit_index);
 
@@ -915,7 +915,7 @@ static void ai_debug_render_path_nodes(
 							do
 							{
 								struct collision_edge const *edge = TAG_BLOCK_GET_ELEMENT(&collision_bsp->edges, edge_index, struct collision_edge);
-								const boolean rev = edge->surface_indices[1]==node->surface_index;
+								boolean const rev = edge->surface_indices[1]==node->surface_index;
 								struct collision_vertex const *vertex = TAG_BLOCK_GET_ELEMENT(&collision_bsp->vertices, edge->vertex_indices[rev], struct collision_vertex);
 
 								add_vectors3d((real_vector3d const *)&midpoint, (real_vector3d const *)&vertex->point, (real_vector3d *)&midpoint);
@@ -977,7 +977,7 @@ static void ai_debug_render_surface(
 	struct structure_bsp const *structure_bsp,
 	long surface_index,
 	real offset,
-	union real_argb_color const *color)
+	real_argb_color const *color)
 {
 	struct collision_bsp const *collision_bsp = TAG_BLOCK_GET_ELEMENT(&structure_bsp->collision_bsp, 0, struct collision_bsp);
 	struct collision_surface const *collision_surface = TAG_BLOCK_GET_ELEMENT(&collision_bsp->surfaces, surface_index, struct collision_surface);
@@ -986,7 +986,7 @@ static void ai_debug_render_surface(
 	do
 	{
 		struct collision_edge const *edge = TAG_BLOCK_GET_ELEMENT(&collision_bsp->edges, edge_index, struct collision_edge);
-		const boolean next_index_belongs_to_surface = edge->surface_indices[1] == surface_index;
+		boolean const next_index_belongs_to_surface = edge->surface_indices[1]==surface_index;
 		struct collision_vertex const *point0 = TAG_BLOCK_GET_ELEMENT(&collision_bsp->vertices, edge->vertex_indices[0], struct collision_vertex);
 		struct collision_vertex const *point1 = TAG_BLOCK_GET_ELEMENT(&collision_bsp->vertices, edge->vertex_indices[1], struct collision_vertex);
 
@@ -1114,8 +1114,8 @@ static void ai_debug_render_actor(
 		{
 			struct prop_iterator iterator;
 			struct prop_datum *prop;
-			short blockage_type = 0;
-			boolean player_prop_found = FALSE;
+			short player_obstruction = 0;
+			boolean found_player = FALSE;
 			real_vector3d aiming_vector;
 
 			prop_iterator_new(&iterator, actor_index);
@@ -1128,24 +1128,24 @@ static void ai_debug_render_actor(
 				{
 					if (prop->player)
 					{
-						short v0;
+						short obstruction;
 
-						player_prop_found = TRUE;
+						found_player = TRUE;
 						unit_get_aiming_vector(prop->unit_index, &aiming_vector);
-						v0 = actor_perception_aiming_vector_test_blockage(
+						obstruction = actor_perception_aiming_vector_test_blockage(
 							&prop->body_position,
 							&aiming_vector,
 							&actor->input.position.body_position,
 							NULL);
 
-						blockage_type = MAX(blockage_type, v0);
+						player_obstruction = MAX(player_obstruction, obstruction);
 					}
 				}
 			}
 
-			if (player_prop_found)
+			if (found_player)
 			{
-				switch (blockage_type)
+				switch (player_obstruction)
 				{
 				case 0:
 					render_debug_string_at_point(TRUE, ai_debug_drawstack(), "not-occluding-player", global_real_argb_green);
@@ -1696,7 +1696,7 @@ static void ai_debug_render_actor(
 
 		if (ai_debug.render_active_cover_seeking && actor_debug_info->field_B8)
 		{
-			const char *strings[8] =
+			char const *strings[8] =
 			{
 				"wrongaction",
 				"visibletarget",
@@ -1821,7 +1821,7 @@ static void ai_debug_render_actor(
 				aud_type = "none";
 				
 			}
-			else if(actor_debug_info->audibility_result==1)
+			else if (actor_debug_info->audibility_result==1)
 			{
 				color = global_real_argb_blue;
 				aud_type = "part";
@@ -3183,7 +3183,7 @@ static void ai_debug_render_actor(
 			short flag_count = NUMBER_OF_UNIT_CONTROL_FLAGS;
 			short control_flag_bit;
 
-			const char *control_flag_names[NUMBER_OF_UNIT_CONTROL_FLAGS-1] =
+			char const *control_flag_names[NUMBER_OF_UNIT_CONTROL_FLAGS-1] =
 			{
 				"crouch",
 				"jump",
@@ -3275,7 +3275,7 @@ static void ai_debug_render_actor(
 			}
 
 			{
-				const char *movement_type_strings[NUMBER_OF_ACTOR_MOVEMENT_TYPES] =
+				char const *movement_type_strings[NUMBER_OF_ACTOR_MOVEMENT_TYPES] =
 				{
 					"noncombat",
 					"asleep",
@@ -3284,7 +3284,7 @@ static void ai_debug_render_actor(
 					NULL
 				};
 
-				const char *aiming_speed_names[NUMBER_OF_UNIT_AIMING_SPEEDS] =
+				char const *aiming_speed_names[NUMBER_OF_UNIT_AIMING_SPEEDS] =
 				{
 					"alert",
 					"casual"
