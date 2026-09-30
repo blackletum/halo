@@ -10,6 +10,11 @@ header included in hcex build.
 
 /* ---------- constants */
 
+enum
+{
+	NUMBER_OF_VOCALIZATION_TYPES = 209
+};
+
 /* ---------- macros */
 
 /* ---------- structures */
@@ -17,6 +22,7 @@ header included in hcex build.
 /* ---------- prototypes/EXAMPLE.C */
 
 short dialogue_get_vocalization_type_by_name(char const *name);
+char const *dialogue_get_vocalization_name(short vocalization_type, boolean unknown);
 
 /* ---------- globals */
 

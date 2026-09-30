@@ -90,11 +90,13 @@ struct player_datum
 /* ---------- prototypes/PLAYER_CONTROL.C */
 
 void player_control_unzoom(long unit_index);
+long player_control_get_unit_index(short local_player_index);
 
 /* ---------- prototypes/PLAYERS.C */
 
 boolean local_player_exists(short local_player_index);
 short local_player_count(void);
+boolean local_player_exists(long local_player_index);
 short local_player_get_next(short local_player_index);
 long local_player_get_player_index(short local_player_index);
 

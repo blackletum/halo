@@ -15,6 +15,11 @@ header included in hcex build.
 
 /* ---------- constants */
 
+enum
+{
+	NUMBER_OF_AI_COMMUNICATION_TYPES = 57
+};
+
 /* ---------- macros */
 
 /* ---------- structures */
@@ -23,7 +28,8 @@ header included in hcex build.
 
 void ai_communication_packet_new(struct ai_information_packet *information);
 
-real ai_communication_get_player_rating(real unit_index, boolean test_line_of_sight, long *unit_index_reference, real *distance_reference);
+short ai_communication_get_type_by_name(char const *name);
+real ai_communication_get_player_rating(long unit_index, boolean test_line_of_sight, long *unit_index_reference, real *distance_reference);
 
 /* ---------- globals */
 

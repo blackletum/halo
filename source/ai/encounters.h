@@ -111,6 +111,9 @@ struct platoon_datum
 
 /* ---------- prototypes/ENCOUNTERS.C */
 
+long encounter_get_by_name(char const *encounter_name);
+void encounter_build_firing_position_owner_actor_indices(long encounter_index, long *firing_position_owner_actor_indices);
+boolean encounter_pursuit_position_already_examined(long encounter_index, long actor_index, short firing_position_index, long history_start_time, short *actor_count_reference, long *last_examined_time_reference);
 void encounter_compute_activation_cluster_bit_vector(long encounter_index, boolean update_actor_dormancy, long bit_vector_size, unsigned long const *active_area, unsigned long *bit_vector);
 
 /* ---------- globals */

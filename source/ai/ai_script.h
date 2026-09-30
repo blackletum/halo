@@ -17,6 +17,8 @@ header included in hcex build.
 /* ---------- prototypes/AI_SCRIPT.C */
 
 void ai_scripting_erase_all(void);
+struct scenario;
+void ai_index_to_string(long ai_index, struct scenario *scenario, char *buffer, long buffer_size);
 
 /* ---------- globals */
 

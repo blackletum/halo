@@ -12,6 +12,9 @@ header included in hcex build.
 
 #ifdef DEBUG
 #include "path.h"
+#include "actors.h"
+#include "ai_communication.h"
+#include "dialogue_definitions.h"
 #endif
 
 /* ---------- constants */
@@ -105,16 +108,11 @@ enum
 
 /* ---------- structures */
 
-struct ai_debug_unknown_state
-{
-	char __unknown0[1648];
-};
-
 struct ai_debug_firing_position
 {
 	boolean pursuit_position;
 	boolean evaluated;
-	char __unknown2[62];
+	struct firing_position last_evaluation;
 };
 
 #ifdef DEBUG
@@ -150,7 +148,12 @@ struct ai_debug_state
 	real path_attractor_radius;
 	real path_attractor_weight;
 	real path_accept_radius;
-	char __unknown3C[81];
+	unsigned long communication_suppress_flags[BIT_VECTOR_SIZE_IN_LONGS(NUMBER_OF_AI_COMMUNICATION_TYPES)];
+	unsigned long communication_ignore_flags[BIT_VECTOR_SIZE_IN_LONGS(NUMBER_OF_AI_COMMUNICATION_TYPES)];
+	unsigned long vocalization_focus_flags[BIT_VECTOR_SIZE_IN_LONGS(NUMBER_OF_VOCALIZATION_TYPES)];
+	char __unknown80[19];
+	boolean field_93;
+	char __unknown94[17];
 	boolean render;
 	boolean render_all_actors;
 	boolean render_inactive_actors;
@@ -241,27 +244,50 @@ struct ai_debug_state
 	real lineoffire_pillwidth[16];
 	boolean lineofsight_overflow;
 	long lineofsight_numpoints;
-	char __unknown2F0[262144];
-	long field_42F0;
-	char __unknown42F4[50472];
+	real_point3d lineofsight_points[16384];
+	short lineofsight_pointcounts[16384];
+	short lineofsight_pointclusters[16384];
+	long lineofsight_numrays;
+	short lineofsight_rays[8192][3];
+	boolean ballistic_valid;
+	boolean ballistic_success;
+	real_point3d ballistic_origin;
+	real_vector3d ballistic_initial_velocity;
+	long ballistic_numpills;
+	real_point3d ballistic_pillbase[16];
+	real_vector3d ballistic_pilldirectedheight[16];
+	real ballistic_pillwidth[16];
+	long ballistic_numpoints;
+	real_point3d ballistic_points[64];
+	char __unknown4C7D8[16];
+	boolean path_start_valid;
+	real_point3d path_start_point;
+	long path_start_surface_index;
+	long path_start_unit_index;
+	boolean path_destination_valid;
+	struct path_destination path_destination;
+	boolean path_state_valid;
 	struct path_state path_state;
 	struct path_result path;
 	struct path_debug_storage path_debug;
 	boolean firing_position_context_valid;
-	byte pad[3];
-	struct ai_debug_unknown_state field_7D384;
+	struct firing_position_evaluation_context firing_position_context;
 	struct ai_debug_firing_position firing_positions[512];
-	char __unknown859F4[32];
+	long aiming_validity_actor_index;
+	boolean aiming_validity_looking_stored;
+	boolean aiming_validity_aiming_stored;
+	real_vector3d aiming_validity_looking_stored_vector;
+	real_vector3d aiming_validity_aiming_stored_vector;
 	boolean idle_look_valid;
 	long prop_idle_actor_index;
 	short prop_idle_look_count;
 	long prop_idle_look_indicies[32];
 	real prop_idle_look_distances[32];
-	boolean field_85B20;
-	boolean field_85B21;
-	boolean field_85B22;
+	boolean speak_active;
+	boolean speak_list;
+	boolean speak_list_skip_unused;
 	long speaking_unit_index;
-	short field_85B28;
+	short speak_delay_timer;
 	short vocalization_type;
 };
 #endif // DEBUG
@@ -283,14 +309,24 @@ void ai_debug_lineoffire_addpill(real_point3d const *base, real_vector3d const *
 void ai_debug_lineoffire_success(boolean success);
 boolean ai_debug_highlight_cluster(short index, real_argb_color const **highlight_color);
 void ai_debug_lineofsight_reset(void);
+void ai_debug_lineofsight(real_point3d const *p0, short p0_cluster_index, real_point3d const *p1, short p1_cluster_index);
 char *ai_debug_describe_actor(long actor_index, long unit_index, boolean include_squad, char *buffer, long bufsize);
 void ai_debug_vocalize(char const *speech_priority_name, char const *vocalization_type_name);
 void ai_debug_speak(char const *vocalization_type_name);
+void ai_debug_speak_list(char const *name);
+void ai_debug_communication_suppress(long name_count, char const **names);
+void ai_debug_communication_ignore(long name_count, char const **names);
+void ai_debug_communication_focus(long name_count, char const **names);
+void ai_debug_idle_look_clear(long actor_index);
+void ai_debug_idle_look_addprop(long prop_index, real distance);
 
 void ai_debug_change_selected_encounter(boolean search_forwards);
 void ai_debug_change_selected_actor(boolean search_forwards);
+void ai_debug_teleport_to(long encounter_index);
 
 void ai_debug_initialize_for_new_map(void);
+void ai_debug_update(void);
+void ai_debug_render(void);
 
 
 /* ---------- globals */

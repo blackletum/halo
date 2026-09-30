@@ -880,7 +880,101 @@ struct actor_debug_info
 	short evaluation_mode;
 };
 
+struct firing_position
+{
+	struct firing_position_definition *definition;
+	short original_index;
+	short line_of_sight;
+	real path_distance_from_actor;
+	real_vector3d path_direction_from_actor;
+	real path_distance_to_target;
+	real path_closest_approach_to_target;
+	real_vector3d path_direction_from_target;
+	real linear_distance_squared_to_target;
+	boolean valid;
+	boolean rejected;
+	real pre_evaluation;
+	real evaluation;
+};
+
+struct firing_position_avoid_point
+{
+	real radius;
+	real_point3d point;
+};
+
+struct firing_position_attack_vector
+{
+	short type;
+	real_point3d point;
+	real_vector3d vector;
+};
+
+struct firing_position_evaluation_context
+{
+	unsigned long allowed_position_mask;
+	short evaluation_mode;
+	long evaluation_data[3];
+	boolean allow_rejected_positions;
+	boolean allow_outside_range;
+	real maximum_allowable_range;
+	real maximum_search_range;
+	boolean specific_target_enable;
+	real_point3d specific_target_point;
+	long specific_target_surface_index;
+	short specific_target_cluster_index;
+	boolean attractor_enable;
+	real attractor_weight;
+	real attractor_radius;
+	boolean find_path_direction_from_actor;
+	boolean use_last_visible_target_position;
+	boolean find_path_distance_to_target;
+	boolean find_path_direction_from_target;
+	boolean flying;
+	boolean directional_driving;
+	boolean directional_driving_cannot_stop;
+	unsigned long preferred_groups;
+	real preferred_weight;
+	long avoid_point_count;
+	struct firing_position_avoid_point avoid_point[32];
+	short attack_vector_count;
+	short friend_attack_vector_count;
+	short dangerous_enemy_attack_vector_count;
+	struct firing_position_attack_vector attack_vectors[32];
+	boolean has_gun_offset_stand;
+	real_vector3d gun_offset_stand;
+	boolean has_gun_offset_crouch;
+	real_vector3d gun_offset_crouch;
+	boolean has_target;
+	real target_current_distance;
+	real_point3d target_point;
+	real_point3d target_head_position;
+	char __unknown61C[84];
+};
+
+struct actor_iterator
+{
+	struct data_iterator encounter_iterator;
+	boolean iterated_encounterless_list;
+	boolean active_only;
+	long index;
+	long next_index;
+};
+
+struct encounter_actor_iterator
+{
+	long encounter_index;
+	long index;
+	long next_index;
+};
+
 /* ---------- prototypes/ACTORS.C */
+
+void actor_iterator_new(struct actor_iterator *iterator, boolean active_only);
+struct actor_datum *actor_iterator_next(struct actor_iterator *iterator);
+void encounter_actor_iterator_new(struct encounter_actor_iterator *iterator, long encounter_index);
+struct actor_datum *encounter_actor_iterator_next(struct encounter_actor_iterator *iterator);
+struct actor_datum *encounter_actor_iterator_prev(struct encounter_actor_iterator *iterator);
 
 real_argb_color const *actor_activation_debug_color(long actor_index);
 
@@ -890,6 +984,10 @@ boolean actor_has_unlimited_grenades(long actor_index);
 /* ---------- prototypes/ACTOR_COMBAT.C */
 
 long actor_aim_grenade(long actor_index, real_point3d const *origin, real_vector3d *vector);
+
+/* ---------- prototypes/ACTOR_LOOKING.C */
+
+void actor_looking_test_validity(long actor_index, real_vector3d *test_vector, boolean *valid_aiming, boolean *valid_looking);
 
 /* ---------- prototypes/ACTOR_MOVING.C */
 

@@ -85,6 +85,7 @@ void biped_get_physics_pill(long biped_index, real_point3d *base, real *height, 
 void biped_accelerate(long biped_index, real_vector3d *acceleration);
 
 void biped_stop_limp_body_physics(long biped_index);
+long biped_find_pathfinding_surface_index(long biped_index, real_point3d *pathfinding_point);
 
 void biped_build_flying_axes(real_vector3d const *forward_vector, real_vector3d *left_vector, real_vector3d *up_vector);
 

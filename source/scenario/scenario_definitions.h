@@ -114,6 +114,16 @@ struct scenario_object_name
 	short runtime_scenario_datum_index;
 };
 
+struct scenario_player
+{
+	real_point3d position;
+	real facing;
+	short team_index;
+	short bsp_index;
+	short game_type[4];
+	long unused[6];
+};
+
 struct scenario_cutscene_flag
 {
 	long flags;

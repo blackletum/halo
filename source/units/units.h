@@ -560,7 +560,9 @@ boolean unit_is_speaking(long unit_index);
 boolean unit_make_damage_sound(long unit_index, struct damage_data *damage_data, boolean died, boolean died_instantly, real body_damage, real shield_damage);
 boolean unit_scream(long unit_index, short scream_type);
 
+char const *unit_get_speech_priority_name(short priority);
 short unit_get_speech_priority_by_name(char const *name);
+char *unit_describe_speech(long unit_index, boolean verbose, short buffer_length, char *buffer);
 
 /* ---------- globals */
 

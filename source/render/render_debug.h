@@ -34,6 +34,9 @@ void render_debug_sphere(boolean immediate, real_point3d const *center, real rad
 void render_debug_cylinder(boolean immediate, real_point3d const *base, real_vector3d const *height, real width, real_argb_color const *color);
 void render_debug_pill(boolean immediate, real_point3d const *base, real_vector3d const *height, real width, real_argb_color const *color);
 
+void render_debug_polygon(real_point3d const *points, short point_count, real_argb_color const *color);
+void render_debug_polygon_edges(real_point3d const *points, short point_count, real_argb_color const *color);
+
 void render_debug_collision_surface(struct collision_bsp const *bsp, long surface_index, real_matrix4x3 const *matrix, real_argb_color const *color);
 
 /* ---------- globals */

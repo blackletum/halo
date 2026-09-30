@@ -17,6 +17,7 @@ header included in hcex build.
 /* ---------- prototypes/DIRECTOR.C */
 
 void director_initialize_for_saved_game(void);
+short director_get_perspective(short local_player_index);
 
 /* ---------- globals */
 
