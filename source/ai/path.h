@@ -46,58 +46,6 @@ enum
 
 /* ---------- structures */
 
-struct disc
-{
-	short flags;
-	short obstacle_index;
-	long object_index;
-	real_point2d center;
-	real radius;
-	real z;
-};
-
-struct obstacles
-{
-	short obstacle_count;
-	short disc_count;
-	short disc_optional_count;
-	struct disc discs[128];
-};
-
-struct step
-{
-	real_point2d point;
-	long surface_index;
-	real_vector2d direction;
-	real distance;
-	short obstacle_index;
-	byte obstacle_direction_index;
-	short obstructed_goal_step_indices[2];
-	real total_distance;
-	short previous_step_index;
-};
-
-struct obstacle_path
-{
-	real radius;
-	boolean ignore_broken_surfaces;
-	struct obstacles const *obstacles;
-	struct structure_bsp const *structure;
-	real_point2d goal;
-	long goal_surface_index;
-	short goal_obstacle_index;
-	short goal_step_index;
-	short best_goal_blocked_step_index;
-	real best_goal_blocked_distance;
-	boolean goal_found_exactly;
-	boolean finishing;
-	boolean ignore_optional;
-	short step_count;
-	struct step steps[128];
-	short heap_count;
-	short heap[128];
-};
-
 struct path_destination
 {
 	real_point3d point;
@@ -181,6 +129,58 @@ struct path_state
 	short heap_count;
 	struct path_heap_element heap[1025];
 	short hash_table[PATH_HASH_TABLE_SIZE];
+};
+
+struct disc
+{
+	short flags;
+	short obstacle_index;
+	long object_index;
+	real_point2d center;
+	real radius;
+	real z;
+};
+
+struct obstacles
+{
+	short obstacle_count;
+	short disc_count;
+	short disc_optional_count;
+	struct disc discs[128];
+};
+
+struct step
+{
+	real_point2d point;
+	long surface_index;
+	real_vector2d direction;
+	real distance;
+	short obstacle_index;
+	byte obstacle_direction_index;
+	short obstructed_goal_step_indices[2];
+	real total_distance;
+	short previous_step_index;
+};
+
+struct obstacle_path
+{
+	real radius;
+	boolean ignore_broken_surfaces;
+	struct obstacles const *obstacles;
+	struct structure_bsp const *structure;
+	real_point2d goal;
+	long goal_surface_index;
+	short goal_obstacle_index;
+	short goal_step_index;
+	short best_goal_blocked_step_index;
+	real best_goal_blocked_distance;
+	boolean goal_found_exactly;
+	boolean finishing;
+	boolean ignore_optional;
+	short step_count;
+	struct step steps[128];
+	short heap_count;
+	short heap[128];
 };
 
 struct path_debug_storage

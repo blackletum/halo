@@ -2209,31 +2209,30 @@ static void ai_debug_render_actor(
 
 			if (unit->object.type==_object_type_biped && unit->object.parent_object_index==NONE)
 			{
-				real_point3d end_point;
-
+				real_vector3d throttle_vector;
 				struct biped_definition *biped_definition = biped_definition_get(unit->definition_index);
 				
 				unit_get_facing_vector(actor->meta.unit_index, &forward);
 
 				if (TEST_FLAG(biped_definition->biped.flags, _biped_flying_bit))
 				{
-					real_vector3d left;
-					real_vector3d up;
+					real_vector3d left_vector;
+					real_vector3d up_vector;
 
-					biped_build_flying_axes(&forward, &left, &up);
-					scale_vector3d(&forward, actor->output.throttle.i, (real_vector3d *)&end_point);
-					point_from_line3d(&end_point, &left, (double)(actor->output.throttle.j), &end_point);
-					point_from_line3d(&end_point, &up, (double)(actor->output.throttle.k), &end_point);
+					biped_build_flying_axes(&forward, &left_vector, &up_vector);
+					scale_vector3d(&forward, actor->output.throttle.i, &throttle_vector);
+					point_from_line3d((real_point3d *)&throttle_vector, &left_vector, (double)(actor->output.throttle.j), (real_point3d *)&throttle_vector);
+					point_from_line3d((real_point3d *)&throttle_vector, &up_vector, (double)(actor->output.throttle.k), (real_point3d *)&throttle_vector);
 				}
 				else
 				{
 					set_real_vector3d(&v, -forward.j, forward.i, 0.f);
-					scale_vector3d(&forward, actor->output.throttle.i, (real_vector3d *)&end_point);
-					point_from_line3d(&end_point, &v, (double)(actor->output.throttle.j), &end_point);
+					scale_vector3d(&forward, actor->output.throttle.i, &throttle_vector);
+					point_from_line3d((real_point3d *)&throttle_vector, &v, (double)(actor->output.throttle.j), (real_point3d *)&throttle_vector);
 				}
 
 				point_from_line3d(&actor->input.position.body_position, global_up3d, 0.1f, &p0);
-				render_debug_vector(TRUE, &p0, (real_vector3d *)&end_point, 1.6f, global_real_argb_pink);
+				render_debug_vector(TRUE, &p0, &throttle_vector, 1.6f, global_real_argb_pink);
 			}
 		}
 
@@ -3376,7 +3375,7 @@ static void ai_debug_render_actor(
 					else
 					{
 						set_real_vector3d(&right_facing_vector, -facing_vector.j, facing_vector.i, 0.f);
-						scale_vector3d(&facing_vector, actor->output.throttle.i, (real_vector3d *)&throttle_vector);
+						scale_vector3d(&facing_vector, actor->output.throttle.i, &throttle_vector);
 						point_from_line3d((real_point3d *)&throttle_vector, &right_facing_vector, (double)(actor->output.throttle.j), (real_point3d *)&throttle_vector);
 					}
 
