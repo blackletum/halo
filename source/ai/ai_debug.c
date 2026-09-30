@@ -4737,7 +4737,7 @@ static short ai_debug_lineofsight_findpoint(
 	for (index = 0; index<ai_debug.lineofsight_numpoints; index++)
 	{
 		if (ai_debug.lineofsight_pointclusters[index]==cluster_index &&
-			distance_squared3d(point, &ai_debug.lineofsight_points[index])<0.000001f)
+			distance_squared3d(point, &ai_debug.lineofsight_points[index])<0.001f*0.001f)
 		{
 			break;
 		}
