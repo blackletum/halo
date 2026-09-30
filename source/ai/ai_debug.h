@@ -148,9 +148,9 @@ struct ai_debug_state
 	real path_attractor_radius;
 	real path_attractor_weight;
 	real path_accept_radius;
-	unsigned long communication_suppress_flags[BIT_VECTOR_SIZE_IN_LONGS(NUMBER_OF_AI_COMMUNICATION_TYPES)];
-	unsigned long communication_ignore_flags[BIT_VECTOR_SIZE_IN_LONGS(NUMBER_OF_AI_COMMUNICATION_TYPES)];
-	unsigned long vocalization_focus_flags[BIT_VECTOR_SIZE_IN_LONGS(NUMBER_OF_VOCALIZATION_TYPES)];
+	unsigned long communication_suppress_flags[BIT_VECTOR_SIZE_IN_LONGS(NUMBER_OF_AI_COMMUNICATION_TYPES)]; /* fake name */
+	unsigned long communication_ignore_flags[BIT_VECTOR_SIZE_IN_LONGS(NUMBER_OF_AI_COMMUNICATION_TYPES)]; /* fake name */
+	unsigned long vocalization_focus_flags[BIT_VECTOR_SIZE_IN_LONGS(NUMBER_OF_VOCALIZATION_TYPES)]; /* fake name */
 	char __unknown80[4];
 	boolean communication_focus_enable;
 	boolean communication_random_disabled;
@@ -314,11 +314,11 @@ struct ai_debug_state
 	short prop_idle_look_count;
 	long prop_idle_look_indicies[32];
 	real prop_idle_look_distances[32];
-	boolean speak_active;
-	boolean speak_list;
-	boolean speak_list_skip_unused;
+	boolean speak_active; /* fake name */
+	boolean speak_list; /* fake name */
+	boolean speak_list_skip_unused; /* fake name */
 	long speaking_unit_index;
-	short speak_delay_timer;
+	short speak_delay_timer; /* fake name */
 	short vocalization_type;
 };
 #endif // DEBUG

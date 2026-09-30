@@ -94,9 +94,8 @@ long player_control_get_unit_index(short local_player_index);
 
 /* ---------- prototypes/PLAYERS.C */
 
-boolean local_player_exists(short local_player_index);
-short local_player_count(void);
 boolean local_player_exists(long local_player_index);
+short local_player_count(void);
 short local_player_get_next(short local_player_index);
 long local_player_get_player_index(short local_player_index);
 

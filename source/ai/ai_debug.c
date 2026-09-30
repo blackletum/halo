@@ -8,6 +8,7 @@ AI_DEBUG.C
 #include "ai_debug.h"
 #include "ai_globals.h"
 #include "actors.h"
+#include "actor_types.h"
 #include "encounters.h"
 #include "props.h"
 #include "collision_bsp_definitions.h"
@@ -1808,19 +1809,19 @@ static void ai_debug_render_actor(
 
 		/* Audibility */
 
-		if (ai_debug.render_audibility && actor_debug_info->field_A4)
+		if (ai_debug.render_audibility && actor_debug_info->audibility_valid)
 		{
 			char const *aud_type;
 			char textstring[512];
 			real_argb_color const *color;
 
-			if (actor_debug_info->field_A6==0)
+			if (actor_debug_info->audibility_result==0)
 			{
 				color = global_real_argb_red;
 				aud_type = "none";
 				
 			}
-			else if(actor_debug_info->field_A6==1)
+			else if(actor_debug_info->audibility_result==1)
 			{
 				color = global_real_argb_blue;
 				aud_type = "part";
@@ -1831,11 +1832,11 @@ static void ai_debug_render_actor(
 				aud_type = "full";
 			}
 
-			sprintf(textstring, "aud/%s %.1fp/%.1fd", aud_type, actor_debug_info->field_A8, actor_debug_info->field_AC);
+			sprintf(textstring, "aud/%s %.1fp/%.1fd", aud_type, actor_debug_info->audibility_perception_distance, actor_debug_info->audibility_straight_distance);
 
-			if (actor_debug_info->field_B0!=-1.f)
+			if (actor_debug_info->audibility_propagation_distance!=-1.f)
 			{
-				strcat(textstring, csprintf(temporary, "/%.1fs/%.1ff", actor_debug_info->field_B0, actor_debug_info->field_B4));
+				strcat(textstring, csprintf(temporary, "/%.1fs/%.1ff", actor_debug_info->audibility_propagation_distance, actor_debug_info->audibility_final_distance));
 			}
 
 			render_debug_string_at_point(TRUE, ai_debug_drawstack(), textstring, color);
@@ -3478,29 +3479,29 @@ static void ai_debug_render_actor(
 			real_vector3d v0;
 			real_point3d p2;
 
-			render_debug_line(TRUE, &actor_debug_info->field_C8, &actor_debug_info->field_E4, global_real_argb_green);
-			render_debug_sphere(TRUE, &actor_debug_info->field_D4, actor_debug_info->field_E0, global_real_argb_yellow);
+			render_debug_line(TRUE, &actor_debug_info->vehicle_avoidance_point, &actor_debug_info->vehicle_intended_entry_point, global_real_argb_green);
+			render_debug_sphere(TRUE, &actor_debug_info->vehicle_center, actor_debug_info->vehicle_radius, global_real_argb_yellow);
 		
 			{
 				real_point3d p0;
 				real_point3d p1;
 
-				ai_debug_render_cross(&actor_debug_info->field_E4, global_real_argb_red);
-				vector_from_points3d(&actor_debug_info->field_C8, &actor_debug_info->field_E4, &v0);
-				point_from_line3d(&actor_debug_info->field_C8, &v0, (double)(actor_debug_info->field_F0), &p2);
+				ai_debug_render_cross(&actor_debug_info->vehicle_intended_entry_point, global_real_argb_red);
+				vector_from_points3d(&actor_debug_info->vehicle_avoidance_point, &actor_debug_info->vehicle_intended_entry_point, &v0);
+				point_from_line3d(&actor_debug_info->vehicle_avoidance_point, &v0, (double)(actor_debug_info->vehicle_intersect_t), &p2);
 			
 				ai_debug_render_cross(&p2, global_real_argb_blue);
 			}
 
-			if (actor_debug_info->field_F4)
+			if (actor_debug_info->vehicle_modified)
 			{
 				real_point3d p0;
 				real_point3d p1;
 
-				render_debug_line(TRUE, &actor_debug_info->field_D4, &actor_debug_info->field_F8, global_real_argb_yellow);
-				render_debug_line(TRUE, &actor_debug_info->field_C8, &actor_debug_info->field_F8, global_real_argb_red);
+				render_debug_line(TRUE, &actor_debug_info->vehicle_center, &actor_debug_info->vehicle_modified_point, global_real_argb_yellow);
+				render_debug_line(TRUE, &actor_debug_info->vehicle_avoidance_point, &actor_debug_info->vehicle_modified_point, global_real_argb_red);
 				
-				ai_debug_render_cross(&actor_debug_info->field_F8, global_real_argb_blue);
+				ai_debug_render_cross(&actor_debug_info->vehicle_modified_point, global_real_argb_blue);
 			}
 		}
 
@@ -3513,32 +3514,32 @@ static void ai_debug_render_actor(
 			real_point3d p0;
 			real_point3d p1;
 
-			ai_debug_render_cross(&actor_debug_info->field_64, global_real_argb_blue);
+			ai_debug_render_cross(&actor_debug_info->aim_last_origin, global_real_argb_blue);
 			
 			render_debug_vector(
 				TRUE,
-				&actor_debug_info->field_64,
-				&actor_debug_info->field_70,
+				&actor_debug_info->aim_last_origin,
+				&actor_debug_info->aim_last_vector,
 				2.f,
-				actor_debug_info->field_60 ? global_real_argb_blue : global_real_argb_red);
+				actor_debug_info->aim_last_by_vector ? global_real_argb_blue : global_real_argb_red);
 			
-			if (!actor_debug_info->field_60)
+			if (!actor_debug_info->aim_last_by_vector)
 			{
-				render_debug_sphere(TRUE, &actor_debug_info->field_7C, 0.2f, global_real_argb_red);
+				render_debug_sphere(TRUE, &actor_debug_info->aim_last_target, 0.2f, global_real_argb_red);
 			}
 
-			if (actor_debug_info->field_88)
+			if (actor_debug_info->aim_last_rotated)
 			{
 				render_debug_vector(
 					TRUE,
 					&actor->input.position.head_position,
-					&actor_debug_info->field_98,
+					&actor_debug_info->aim_last_rotated_original_vector,
 					1.f,
 					global_real_argb_white);
 				render_debug_vector(
 					TRUE,
-					&actor_debug_info->field_64,
-					&actor_debug_info->field_8C,
+					&actor_debug_info->aim_last_origin,
+					&actor_debug_info->aim_last_rotated_vector,
 					2.f,
 					global_real_argb_purple);
 			}
@@ -4042,20 +4043,20 @@ void ai_debug_speak_list(
 			boolean skip_unused;
 		} lists[] =
 		{
-			{ "all", 0, TRUE },
-			{ "idle", 0, FALSE },
-			{ "involuntary", 6, FALSE },
-			{ "hurting people", 21, FALSE },
-			{ "being hurt", 29, FALSE },
-			{ "killing people", 49, FALSE },
-			{ "player kill comments", 80, FALSE },
-			{ "friends dying", 96, FALSE },
-			{ "shouting", 108, FALSE },
-			{ "group communication", 123, FALSE },
-			{ "actions", 148, FALSE },
-			{ "exclamations", 177, FALSE },
-			{ "post-combat actions", 188, FALSE },
-			{ "post-combat chatter", 197, FALSE },
+			{ "all", _vocalization_idle_noncombat, TRUE },
+			{ "idle", _vocalization_idle_noncombat, FALSE },
+			{ "involuntary", _vocalization_pain_body_minor, FALSE },
+			{ "hurting people", _vocalization_damaged_friend, FALSE },
+			{ "being hurt", _vocalization_hurt_friend, FALSE },
+			{ "killing people", _vocalization_killed_friend, FALSE },
+			{ "player kill comments", _vocalization_player_kill_cm, FALSE },
+			{ "friends dying", _vocalization_friend_died, FALSE },
+			{ "shouting", _vocalization_new_combat_alone, FALSE },
+			{ "group communication", _vocalization_new_combat_group_re, FALSE },
+			{ "actions", _vocalization_sighted_friend_player, FALSE },
+			{ "exclamations", _vocalization_surprise, FALSE },
+			{ "post-combat actions", _vocalization_celebration, FALSE },
+			{ "post-combat chatter", _vocalization_alone, FALSE },
 			{ NULL, NONE, FALSE }
 		}, *list;
 		struct actor_datum const *actor = actor_get(ai_debug.selected_actor_index);
@@ -4115,7 +4116,7 @@ static void ai_debug_speech_update(
 						long sound_definition_index = NONE;
 						short play_type = unit_test_speech(
 							ai_debug.speaking_unit_index,
-							3,
+							_speech_priority_talk,
 							FALSE,
 							FALSE,
 							NULL,
@@ -4131,7 +4132,7 @@ static void ai_debug_speech_update(
 
 							speech_item.vocalization_type = vocalization_type;
 							speech_item.sound_definition_index = sound_definition_index;
-							speech_item.priority = 4;
+							speech_item.priority = _speech_priority_communicate;
 							speech_item.pause_time = 15;
 
 							ai_communication_packet_new(&speech_item.ai);
@@ -4526,12 +4527,12 @@ static void ai_debug_render_speech(
 
 			switch (unit_speech->current.priority)
 			{
-			case 2:
-			case 7:
-			case 10:
+			case _speech_priority_pain:
+			case _speech_priority_involuntary:
+			case _speech_priority_death:
 				color = global_real_argb_red;
 				break;
-			case 6:
+			case _speech_priority_script:
 				color = global_real_argb_blue;
 				break;
 			default:
@@ -5486,7 +5487,7 @@ static void ai_debug_render_encounter(
 		}
 		else
 		{
-			real_argb_color const *const *group_colors[7] =
+			real_argb_color const *const *group_colors[NUMBER_OF_FIRING_POSITION_GROUPS] =
 			{
 				&global_real_argb_red,
 				&global_real_argb_orange,
@@ -5760,7 +5761,7 @@ static void ai_debug_render_vehicles_enterable(
 
 			if (enterable->actor_type_bitmask)
 			{
-				char const *actor_types[16] =
+				char const *actor_types[NUMBER_OF_ACTOR_TYPES] =
 				{
 					"elite",
 					"jackal",
@@ -5781,7 +5782,7 @@ static void ai_debug_render_vehicles_enterable(
 				};
 
 				sprintf(temporary, "actor types:");
-				for (index = 0; index<16; index++)
+				for (index = 0; index<NUMBER_OF_ACTOR_TYPES; index++)
 				{
 					if (enterable->actor_type_bitmask & FLAG(index))
 					{
