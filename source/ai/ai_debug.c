@@ -757,9 +757,7 @@ static void ai_debug_render_path_node(
 	real text_increment_height;
 	real_point3d const *point = &node->entry_point;
 
-	text_point.x = (child_point->x + point->x) * 0.5f;
-	text_point.y = (point->y + child_point->y) * 0.5f;
-	text_point.z = (point->z + child_point->z) * 0.5f;
+	midpoint3d(child_point, point, &text_point);
 	point_from_line3d(&text_point, global_up3d, 0.1f, &text_point);
 
 	if (camera)
@@ -919,18 +917,14 @@ static void ai_debug_render_path_nodes(
 								const boolean rev = edge->surface_indices[1]==node->surface_index;
 								struct collision_vertex const *vertex = TAG_BLOCK_GET_ELEMENT(&collision_bsp->vertices, edge->vertex_indices[rev], struct collision_vertex);
 
-								midpoint.x += vertex->point.x;
-								midpoint.y += vertex->point.y;
-								midpoint.z += vertex->point.z;
+								add_vectors3d((real_vector3d const *)&midpoint, (real_vector3d const *)&vertex->point, (real_vector3d *)&midpoint);
 								vertex_count++;
 								edge_index = edge->edge_indices[rev];
 							}
 							while (edge_index!=surface->first_edge_index);
 
 							scale /= vertex_count;
-							midpoint.x *= scale;
-							midpoint.y *= scale;
-							midpoint.z *= scale;
+							scale_vector3d((real_vector3d const *)&midpoint, scale, (real_vector3d *)&midpoint);
 							child_point = &midpoint;
 						}
 						else
@@ -5414,18 +5408,6 @@ static void ai_debug_render_all_actors(
 
 	return;
 }
-
-/*
-result.c -- worker `enc`: ai_debug_render_encounter + ai_debug_render_vehicles_enterable (both 100%)
-
-Required additional includes at the top of ai_debug.c (after "dialogue_definitions.h"):
-	#include "ai_script.h"		// ai_index_to_string
-	#include "editor_stubs.h"	// game_in_editor (must be declared boolean: target does `test al, al`)
-
-Replace the two stubs:
-	static void ai_debug_render_encounter(long encounter_index) { return; }
-	static void ai_debug_render_vehicles_enterable(void) { return; }
-*/
 
 static void ai_debug_render_encounter(
 	long encounter_index)

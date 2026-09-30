@@ -949,32 +949,29 @@ struct firing_position_evaluation_context
 	real target_current_distance;
 	real_point3d target_point;
 	real_point3d target_head_position;
-	char __unknown61C[84];
-};
+	real_point3d target_line_of_sight_position;
+	boolean target_line_of_sight_optional;
+	long target_vehicle_index;
+	long target_pathfinding_surface_index;
+	real_point3d target_pathfinding_point;
+	short target_cluster_index;
+	long target_prop_index;
+	boolean target_has_hint_vector;
+	real_vector3d target_hint_vector;
+	real target_danger_radius;
+	boolean post_evaluation_bounded;
+	real post_evaluation_bound;
 
-struct actor_iterator
-{
-	struct data_iterator encounter_iterator;
-	boolean iterated_encounterless_list;
-	boolean active_only;
-	long index;
-	long next_index;
-};
-
-struct encounter_actor_iterator
-{
-	long encounter_index;
-	long index;
-	long next_index;
+	/* fake names */
+	short encounter_count;
+	short consider_count;
+	short valid_count;
+	short nonrejected_count;
+	short post_evaluation_count;
+	short skipped_count;
 };
 
 /* ---------- prototypes/ACTORS.C */
-
-void actor_iterator_new(struct actor_iterator *iterator, boolean active_only);
-struct actor_datum *actor_iterator_next(struct actor_iterator *iterator);
-void encounter_actor_iterator_new(struct encounter_actor_iterator *iterator, long encounter_index);
-struct actor_datum *encounter_actor_iterator_next(struct encounter_actor_iterator *iterator);
-struct actor_datum *encounter_actor_iterator_prev(struct encounter_actor_iterator *iterator);
 
 real_argb_color const *actor_activation_debug_color(long actor_index);
 

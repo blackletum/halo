@@ -48,7 +48,12 @@ enum
 
 struct disc
 {
-	real __unknown0[6];
+	short flags;
+	short obstacle_index;
+	long object_index;
+	real_point2d center;
+	real radius;
+	real z;
 };
 
 struct obstacles
@@ -66,7 +71,10 @@ struct step
 	real_vector2d direction;
 	real distance;
 	short obstacle_index;
-	long __unknown1C[3];
+	byte obstacle_direction_index;
+	short obstructed_goal_step_indices[2];
+	real total_distance;
+	short previous_step_index;
 };
 
 struct obstacle_path

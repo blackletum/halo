@@ -109,8 +109,29 @@ struct platoon_datum
 	real current_strength_fraction;
 };
 
+struct actor_iterator
+{
+	struct data_iterator encounter_iterator;
+	boolean iterated_encounterless_list;
+	boolean active_only;
+	long index;
+	long next_index;
+};
+
+struct encounter_actor_iterator
+{
+	long encounter_index;
+	long index;
+	long next_index;
+};
+
 /* ---------- prototypes/ENCOUNTERS.C */
 
+void actor_iterator_new(struct actor_iterator *iterator, boolean active_only);
+struct actor_datum *actor_iterator_next(struct actor_iterator *iterator);
+void encounter_actor_iterator_new(struct encounter_actor_iterator *iterator, long encounter_index);
+struct actor_datum *encounter_actor_iterator_next(struct encounter_actor_iterator *iterator);
+struct actor_datum *encounter_actor_iterator_prev(struct encounter_actor_iterator *iterator);
 long encounter_get_by_name(char const *encounter_name);
 void encounter_build_firing_position_owner_actor_indices(long encounter_index, long *firing_position_owner_actor_indices);
 boolean encounter_pursuit_position_already_examined(long encounter_index, long actor_index, short firing_position_index, long history_start_time, short *actor_count_reference, long *last_examined_time_reference);
