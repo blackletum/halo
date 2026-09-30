@@ -13,6 +13,12 @@ header included in hcex build.
 enum
 {
 	_ai_meter_collision_vector = 21,
+	_ai_meter_line_of_sight,
+	_ai_meter_line_of_fire,
+	_ai_meter_path_flood,
+	_ai_meter_path_find,
+	_ai_meter_action_change,
+	_ai_meter_firing_point_eval,
 	NUMBER_OF_AI_METERS,
 };
 

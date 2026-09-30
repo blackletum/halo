@@ -84,7 +84,7 @@ static void ai_debug_render_actor(long actor_index, boolean render_exclusive, lo
 static void ai_debug_render_path_storage(struct path_debug_storage *path);
 
 static void ai_debug_path_storage_update(void);
-static void ai_debug_update_speech(void);
+static void ai_debug_speech_update(void);
 static void ai_debug_render_all_actors(boolean render_inactive);
 static void ai_debug_render_encounter(long encounter_index);
 static void ai_debug_render_path_line(real_point3d const *start_point, short step_count, struct path_step const *steps, real_argb_color const *color);
@@ -115,7 +115,7 @@ static void ai_debug_render_speech(void);
 static void ai_debug_render_idle_look(void);
 static void ai_debug_render_spatial_effects(void);
 static void ai_debug_render_vehicles_enterable(void);
-static void ai_debug_communication_set_flags(
+static void ai_debug_communication_toggle_bits(
 	long name_count,
 	char const **names,
 	unsigned long *flags,
@@ -1965,7 +1965,7 @@ static void ai_debug_render_actor(
 						point_from_line3d(&string_point, global_up3d, 0.05f, &string_point);
 					}
 
-					if (ai_debug.render_props_unreachable)
+					if (ai_debug.render_props_target_weight)
 					{
 						render_debug_string_at_point(
 							TRUE,
@@ -1981,7 +1981,7 @@ static void ai_debug_render_actor(
 						}
 					}
 
-					if (ai_debug.render_props_unopposable && prop->unreachable_ticks>0)
+					if (ai_debug.render_props_unreachable && prop->unreachable_ticks>0)
 					{
 						long time = prop->last_unreachable_time!=NONE ? game_time_get()-prop->last_unreachable_time : NONE;
 
@@ -1993,7 +1993,7 @@ static void ai_debug_render_actor(
 						point_from_line3d(&string_point, global_up3d, 0.05f, &string_point);
 					}
 
-					if (ai_debug.render_props_target_weight && prop->unopposable_enemy)
+					if (ai_debug.render_props_unopposable && prop->unopposable_enemy)
 					{
 						sprintf(
 							temporary,
@@ -2017,7 +2017,7 @@ static void ai_debug_render_actor(
 				}
 			}
 
-			if (ai_debug.render_props_target_weight && actor->emotions.unopposable_retreat_timer>0)
+			if (ai_debug.render_props_unopposable && actor->emotions.unopposable_retreat_timer>0)
 			{
 				struct prop_datum const *retreating_prop = prop_get(actor->emotions.unopposable_retreat_prop_index);
 				real_point3d p0;
@@ -2366,7 +2366,7 @@ static void ai_debug_render_actor(
 				render_debug_sphere(TRUE, &prop->last_visible_head_position, 0.2f, target_color);
 			}
 			
-			if (prop->unreachable_ticks>0 && (!ai_debug.render_props || !ai_debug.render_props_unopposable))
+			if (prop->unreachable_ticks>0 && (!ai_debug.render_props || !ai_debug.render_props_unreachable))
 			{
 				long time = prop->last_unreachable_time!=NONE ? game_time_get()-prop->last_unreachable_time : NONE;
 
@@ -4091,7 +4091,7 @@ void ai_debug_speak_list(
 	return;
 }
 
-static void ai_debug_update_speech(
+static void ai_debug_speech_update(
 	void)
 {
 	if (ai_debug.speak_active && ai_debug.speaking_unit_index!=NONE)
@@ -4205,7 +4205,7 @@ static void ai_debug_update_speech(
 	return;
 }
 
-static void ai_debug_communication_set_flags(
+static void ai_debug_communication_toggle_bits(
 	long name_count,
 	char const **names,
 	unsigned long *flags,
@@ -4271,7 +4271,7 @@ void ai_debug_communication_suppress(
 	long name_count,
 	char const **names)
 {
-	ai_debug_communication_set_flags(
+	ai_debug_communication_toggle_bits(
 		name_count,
 		names,
 		ai_debug.communication_suppress_flags,
@@ -4285,7 +4285,7 @@ void ai_debug_communication_ignore(
 	long name_count,
 	char const **names)
 {
-	ai_debug_communication_set_flags(
+	ai_debug_communication_toggle_bits(
 		name_count,
 		names,
 		ai_debug.communication_ignore_flags,
@@ -4299,7 +4299,7 @@ void ai_debug_communication_focus(
 	long name_count,
 	char const **names)
 {
-	ai_debug_communication_set_flags(
+	ai_debug_communication_toggle_bits(
 		name_count,
 		names,
 		ai_debug.vocalization_focus_flags,
@@ -4519,7 +4519,7 @@ static void ai_debug_render_speech(
 			}
 		}
 
-		if (ai_debug.field_93 && !ai_debug.render_speech && unit_speech->current.priority>0)
+		if (ai_debug.print_speech && !ai_debug.render_speech && unit_speech->current.priority>0)
 		{
 			char speechbuf[512];
 			real_argb_color const *color;
@@ -5078,7 +5078,7 @@ void ai_debug_update(
 		ai_debug.fix_actor_variants = FALSE;
 	}
 
-	ai_debug_update_speech();
+	ai_debug_speech_update();
 	ai_debug_path_storage_update();
 
 	return;
@@ -5876,7 +5876,7 @@ void ai_debug_render(
 				ai_debug_render_all_actors(ai_debug.render_inactive_actors);
 			}
 
-			if (ai_debug.render_speech || ai_debug.field_93 || ai_debug.render_dialogue_variants)
+			if (ai_debug.render_speech || ai_debug.print_speech || ai_debug.render_dialogue_variants)
 			{
 				ai_debug_render_speech();
 			}
