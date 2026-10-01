@@ -672,7 +672,7 @@ static void create_local_players(
 
 		for (i = 0; i<player_spawn_count; i++)
 		{
-			desired_controllers[i] = player_ui_get_single_player_local_player_controller((short)i);
+			desired_controllers[i] = player_ui_get_single_player_local_player_controller(i);
 
 			if (desired_controllers[i]==NONE)
 			{
@@ -689,7 +689,7 @@ static void create_local_players(
 				{
 					if (controllers_used[j]==NONE)
 					{
-						desired_controllers[i] = (short)j;
+						desired_controllers[i] = j;
 						controllers_used[desired_controllers[i]] = desired_controllers[i];
 						break;
 					}
@@ -1858,14 +1858,7 @@ static void main_frame_rate_debug(
 	{
 		last_spf[current_spf_index] = main_globals.seconds_elapsed;
 
-		if (main_globals.seconds_elapsed>36*0.001)
-		{
-			bad_frame_flags |= 1<<current_spf_index;
-		}
-		else
-		{
-			bad_frame_flags &= ~(1<<current_spf_index);
-		}
+		SET_FLAG(bad_frame_flags, current_spf_index, main_globals.seconds_elapsed>36*0.001);
 
 		current_spf_index++;
 		current_spf_index %= NUMBER_OF_FRAME_SAMPLES;
@@ -1889,7 +1882,7 @@ static void main_frame_rate_debug(
 				}
 			}
 		}
-		else if (bad_frame_flags==0xFF)
+		else if (bad_frame_flags==MASK(NUMBER_OF_FRAME_SAMPLES))
 		{
 			char core_name[256];
 			char file_name[MAX_PATH];
@@ -2239,7 +2232,7 @@ static void screenshot_render(
 	global_screenshot_size = PIN(global_screenshot_size, 1, 3);
 	width = rasterizer_globals.screen_bounds.x1-rasterizer_globals.screen_bounds.x0;
 	height = rasterizer_globals.screen_bounds.y1-rasterizer_globals.screen_bounds.y0;
-	screen = bitmap_2d_new((short)(global_screenshot_size*width), (short)(global_screenshot_size*height), 0, _bitmap_format_x8r8g8b8);
+	screen = bitmap_2d_new(global_screenshot_size*width, global_screenshot_size*height, 0, _bitmap_format_x8r8g8b8);
 
 	if (screen && screen->base_address)
 	{
