@@ -60,8 +60,6 @@ MAIN.C
 #include "profile.h"
 #include "cheats.h"
 #include "game_engine.h"
-#include "network_game_globals.h"
-#include "player_effects.h"
 #include "cache_files.h"
 
 /* ---------- structures */
