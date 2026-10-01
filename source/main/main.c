@@ -1457,7 +1457,7 @@ static void main_game_render(
 
 	if (global_screenshot_count<=0)
 	{
-		render_frame(window, (short)(window_count+1), NULL, NULL, main_globals.movie, (real)time_delta_since_tick_sec);
+		render_frame(window, window_count+1, NULL, NULL, main_globals.movie, time_delta_since_tick_sec);
 	}
 	else
 	{
@@ -2009,9 +2009,9 @@ static void main_update_time(
 	void)
 {
 	real seconds_elapsed;
-	unsigned long time = system_milliseconds();
-	__int64 target_vblank_index = MAX(main_globals.last_vblank_index, main_globals.last_present_vblank_index);
-	__int64 vblank_index = target_vblank_index;
+	unsigned long current_milliseconds = system_milliseconds();
+	__int64 current_vblank_index = MAX(main_globals.last_vblank_index, main_globals.last_present_vblank_index);
+	__int64 target_display_vblank_index = current_vblank_index;
 	boolean throttle = code_000f0be0();
 
 	if (throttle)
@@ -2030,6 +2030,7 @@ static void main_update_time(
 				short best_interval;
 				short frame_rate;
 				short elapsed = game_time_get_elapsed();
+				short frame_index = (short)current_vblank_index;
 
 				_snprintf(main_globals.__unknown41C+strlen(main_globals.__unknown41C), NUMBEROF(main_globals.__unknown41C)-strlen(main_globals.__unknown41C), "last%6I64d init%6I64d achv%6I64d pres%6I64d g%d cur%d... ",
 					main_globals.last_vblank_index, main_globals.last_initial_vblank_index, main_globals.last_achievable_vblank_index, main_globals.last_present_vblank_index,
@@ -2041,7 +2042,7 @@ static void main_update_time(
 				{
 					boolean ignore = FALSE;
 					short failure_count = MIN(99, main_globals.vblank_failure_count[interval]);
-					short frames_since_failure = (short)MIN(99, (short)target_vblank_index-main_globals.vblank_last_failure_time[interval]);
+					short frames_since_failure = MIN(99, frame_index-main_globals.vblank_last_failure_time[interval]);
 					short half_interval = (interval+1)/2;
 					short half_current_up = (main_globals.vblank_interval_current+1)/2;
 					short half_current = main_globals.vblank_interval_current/2;
@@ -2056,13 +2057,13 @@ static void main_update_time(
 						if (!ignore)
 						{
 							main_globals.vblank_failure_count[interval]++;
-							main_globals.vblank_last_failure_time[interval] = target_vblank_index;
+							main_globals.vblank_last_failure_time[interval] = current_vblank_index;
 						}
 
 						_snprintf(main_globals.__unknown41C+strlen(main_globals.__unknown41C), NUMBEROF(main_globals.__unknown41C)-strlen(main_globals.__unknown41C), "(%s%2d) ",
 							ignore ? "ignor" : "fail ", failure_count);
 					}
-					else if (target_vblank_index>=main_globals.vblank_last_failure_time[interval]+15)
+					else if (current_vblank_index>=main_globals.vblank_last_failure_time[interval]+15)
 					{
 						main_globals.vblank_failure_count[interval] = 0;
 						_snprintf(main_globals.__unknown41C+strlen(main_globals.__unknown41C), NUMBEROF(main_globals.__unknown41C)-strlen(main_globals.__unknown41C), "(ok   %2d) ",
@@ -2096,7 +2097,7 @@ static void main_update_time(
 				}
 
 				_snprintf(main_globals.__unknown41C+strlen(main_globals.__unknown41C), NUMBEROF(main_globals.__unknown41C)-strlen(main_globals.__unknown41C), " des %d targ%6I64d",
-					best_interval, target_vblank_index+best_interval);
+					best_interval, current_vblank_index+best_interval);
 
 				main_globals.vblank_interval_current = best_interval;
 			}
@@ -2105,12 +2106,14 @@ static void main_update_time(
 				main_globals.vblank_interval_current = minimum_interval;
 			}
 
-			vblank_index = target_vblank_index+main_globals.vblank_interval_current;
+			target_display_vblank_index = current_vblank_index+main_globals.vblank_interval_current;
 		}
 	}
 	else
 	{
-		long elapsed_msec = (long)(real)(long)(time-main_globals.last_time_msec);
+		long delta_msec = current_milliseconds-main_globals.last_time_msec;
+		real elapsed = (real)delta_msec;
+		long elapsed_msec = (long)elapsed;
 
 		main_globals.vblank_interval_held = FALSE;
 
@@ -2131,16 +2134,16 @@ static void main_update_time(
 		}
 	}
 
-	time = system_milliseconds();
-	vblank_index = MAX(rasterizer_globals.__unknown28, vblank_index);
+	current_milliseconds = system_milliseconds();
+	target_display_vblank_index = MAX(rasterizer_globals.__unknown28, target_display_vblank_index);
 
 	if (throttle)
 	{
-		seconds_elapsed = (vblank_index-main_globals.last_vblank_index)*(1.f/60.f);
+		seconds_elapsed = (target_display_vblank_index-main_globals.last_vblank_index)*(1.f/60.f);
 	}
 	else
 	{
-		seconds_elapsed = (time-main_globals.last_time_msec)*0.001f;
+		seconds_elapsed = (current_milliseconds-main_globals.last_time_msec)*0.001f;
 	}
 
 	if (main_globals.movie)
@@ -2157,8 +2160,8 @@ static void main_update_time(
 		}
 	}
 
-	main_globals.last_time_msec = time;
-	main_globals.last_vblank_index = vblank_index;
+	main_globals.last_time_msec = current_milliseconds;
+	main_globals.last_vblank_index = target_display_vblank_index;
 	main_globals.seconds_elapsed = seconds_elapsed;
 	profile_seconds_elapsed(seconds_elapsed);
 	main_globals.last_initial_vblank_index = rasterizer_globals.__unknown28;
@@ -2209,12 +2212,12 @@ void main_rasterizer_throttle(
 
 	main_globals.last_present_vblank_index = rasterizer_globals.__unknown28+1;
 	at_minimum = main_globals.vblank_interval_current==main_globals.vblank_interval_minimum;
-	lapsed = (short)PIN(main_globals.last_present_vblank_index-main_globals.last_vblank_index, 0, SHRT_MAX);
+	lapsed = PIN(main_globals.last_present_vblank_index-main_globals.last_vblank_index, 0, SHRT_MAX);
 
 	_snprintf(main_globals.__unknown41C+strlen(main_globals.__unknown41C), NUMBEROF(main_globals.__unknown41C)-strlen(main_globals.__unknown41C), "%6I64d(targ%6I64d %s%2d)",
 		vblank_index, main_globals.last_vblank_index,
 		throttled ? "THROTTLE" : (lapsed==0 ? "SYNCED  " : "LAPSED  "),
-		throttled ? rasterizer_globals.__unknown28-vblank_index : (__int64)lapsed);
+		throttled ? rasterizer_globals.__unknown28-vblank_index : lapsed);
 
 	main_globals.vblank_interval_held = main_globals.vblank_interval_current>0 && lapsed==0;
 	profile_lapsed_frames(lapsed, at_minimum, main_globals.__unknown41C);
@@ -2360,7 +2363,7 @@ void main_framerate_render(
 		{
 			char str[4];
 			rectangle2d bounds = render.camera.window_bounds;
-			short frame_rate = (short)fast_ftol(1.f/MAX(main_globals.seconds_elapsed, 0.01f));
+			short frame_rate = fast_ftol(1.f/MAX(main_globals.seconds_elapsed, 0.01f));
 
 			if (main_globals.vblank_interval_held)
 			{
@@ -2418,7 +2421,7 @@ void main_framerate_render(
 			{
 				char str[4];
 				rectangle2d bounds = render.camera.window_bounds;
-				short percent = (short)fast_ftol(progress*100.f);
+				short percent = fast_ftol(progress*100.f);
 
 				_snprintf(str, NUMBEROF(str)-1, "%d", percent);
 				str[NUMBEROF(str)-1] = '\0';
@@ -2558,7 +2561,7 @@ void main_vertical_blank_interrupt_handler(
 	}
 	else if (*main_globals.vblank_flip_counter!=rasterizer_globals.flip_index)
 	{
-		main_globals.vblank_flip_deltas[main_globals.vblank_flip_delta_next_index] = (short)(rasterizer_globals.__unknown28-rasterizer_globals.__unknown30);
+		main_globals.vblank_flip_deltas[main_globals.vblank_flip_delta_next_index] = rasterizer_globals.__unknown28-rasterizer_globals.__unknown30;
 		main_globals.vblank_flip_delta_next_index = (main_globals.vblank_flip_delta_next_index+1)%15;
 		rasterizer_globals.__unknown30 = rasterizer_globals.__unknown28;
 		rasterizer_globals.flip_index = *main_globals.vblank_flip_counter;
