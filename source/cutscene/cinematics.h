@@ -16,6 +16,8 @@ header included in hcex build.
 
 /* ---------- prototypes/CINEMATICS.C */
 
+boolean cinematic_can_be_skipped(void);
+
 boolean cinematic_in_progress(void);
 
 /* ---------- globals */

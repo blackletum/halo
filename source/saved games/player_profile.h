@@ -29,7 +29,10 @@ enum
 
 /* ---------- structures */
 
-/* ---------- prototypes/EXAMPLE.C */
+/* ---------- prototypes/PLAYER_PROFILE.C */
+
+void player_profile_save_last_level_played(short local_player_index);
+void player_profile_save_level_completed(short local_player_index);
 
 /* ---------- globals */
 

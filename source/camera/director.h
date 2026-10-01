@@ -25,6 +25,10 @@ enum
 
 /* ---------- prototypes/DIRECTOR.C */
 
+void director_update(real dt);
+short director_get_perspective(short local_player_index);
+void director_script_camera(boolean enabled);
+
 void director_initialize_for_saved_game(void);
 short director_get_perspective(short local_player_index);
 

@@ -145,7 +145,8 @@ static void code_00174410(
 }
 
 void render_frame_pregame(
-	const struct render_window *window)
+	struct render_window const *window,
+	struct bitmap_data *screenshot_bitmap)
 {
 	struct rasterizer_frame_begin_parameters parameters;
 	struct rasterizer_window_begin_parameters rasterizer_parameters;

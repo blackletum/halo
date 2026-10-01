@@ -248,6 +248,11 @@ struct rasterizer_lens_flare_submit_parameters
 
 /* ---------- prototypes/RASTERIZER.C */
 
+void rasterizer_reset_state(void);
+void rasterizer_set_vblank_callback(void (*callback)(unsigned long));
+void rasterizer_debug_draw(void);
+void rasterizer_transparent_geometry_draw(boolean water);
+
 boolean rasterizer_initialize(void);
 
 void rasterizer_frame_begin(const struct rasterizer_frame_begin_parameters *parameters);
@@ -298,6 +303,17 @@ struct rasterizer_globals_struct
 	short current_lock_operation;
 	rectangle2d screen_bounds;
 	rectangle2d frame_bounds;
+	byte __unknown14[4];
+	__int64 frame_index;
+	unsigned long flip_index;
+	volatile __int64 __unknown28;
+	volatile __int64 __unknown30;
+	byte __unknown38[5];
+	boolean use_rasterizer_frame_rate_throttle;
+	boolean use_rasterizer_frame_rate_stabilization;
+	short refresh_rate;
+	real z_near;
+	real z_far;
 };
 
 extern struct rasterizer_globals_struct rasterizer_globals;

@@ -531,6 +531,9 @@ void matrix4x3_multiply(real_matrix4x3 const *a, real_matrix4x3 const *b, real_m
 
 /* ---------- prototypes/RANDOM_MATH.C */
 
+void lock_global_random_seed(void);
+void unlock_global_random_seed(void);
+
 unsigned long *get_global_random_seed_address(void);
 unsigned long *get_global_local_random_seed_address(void);
 
