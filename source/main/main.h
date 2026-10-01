@@ -8,6 +8,21 @@ MAIN.H
 
 /* ---------- constants */
 
+enum
+{
+	_single_player_map_a10 = 0,
+	_single_player_map_a30,
+	_single_player_map_a50,
+	_single_player_map_b30,
+	_single_player_map_b40,
+	_single_player_map_c10,
+	_single_player_map_c20,
+	_single_player_map_c40,
+	_single_player_map_d20,
+	_single_player_map_d40,
+	NUMBER_OF_SINGLE_PLAYER_LEVELS,
+};
+
 /* ---------- macros */
 
 /* ---------- structures */

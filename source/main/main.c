@@ -340,7 +340,7 @@ void main_loop(
 			{
 				if (!network_game_client_start_frame())
 				{
-					display_error_when_main_menu_loaded(6);
+					display_error_when_main_menu_loaded(_error_network_connection_lost);
 					error(_error_silent, "the game host went down");
 					network_game_abort();
 				}
@@ -349,13 +349,13 @@ void main_loop(
 			{
 				if (!network_game_client_start_frame())
 				{
-					display_error_when_main_menu_loaded(1);
+					display_error_when_main_menu_loaded(_error_network_generic);
 					error(_error_silent, "the game host went down");
 					network_game_abort();
 				}
 				else if (!network_game_server_start_frame())
 				{
-					display_error_when_main_menu_loaded(1);
+					display_error_when_main_menu_loaded(_error_network_generic);
 					error(_error_silent, "the game host went down");
 					network_game_abort();
 				}
@@ -396,7 +396,7 @@ void main_loop(
 					case _game_connection_network_server:
 						if (!network_game_client_end_frame())
 						{
-							display_error_when_main_menu_loaded(1);
+							display_error_when_main_menu_loaded(_error_network_generic);
 							network_game_abort();
 						}
 						break;
@@ -408,7 +408,7 @@ void main_loop(
 						(main_globals.halt_time_scale && (game_time_get_paused() || game_time_get_elapsed()>0 || game_time_get_speed()<1.f));
 					render &= !game_engine_running() || game_time_get()>=3;
 
-					collision_log_continue_period(1);
+					collision_log_continue_period(_collision_period_render_frame);
 					director_update(main_globals.halt_time_scale*main_globals.seconds_elapsed);
 					observer_update(main_globals.halt_time_scale*main_globals.seconds_elapsed);
 					collision_log_end_period();
@@ -609,7 +609,7 @@ void main_load_last_solo_map(
 		}
 		else
 		{
-			main_set_map_name(main_get_solo_level_name(0));
+			main_set_map_name(main_get_solo_level_name(_single_player_map_a10));
 		}
 
 		main_globals.rename_map = FALSE;
@@ -949,7 +949,7 @@ static void main_queue_map_private(
 {
 	real progress;
 
-	if (cache_files_precache_in_progress() && cache_files_precache_map_status(&progress)==1)
+	if (cache_files_precache_in_progress() && cache_files_precache_map_status(&progress)==_cached_map_file_success)
 	{
 		cache_files_precache_map_end();
 	}
@@ -1093,43 +1093,43 @@ short main_get_solo_level_from_name(
 
 	if (strstr(current_map, "a10"))
 	{
-		level = 0;
+		level = _single_player_map_a10;
 	}
 	else if (strstr(current_map, "a30"))
 	{
-		level = 1;
+		level = _single_player_map_a30;
 	}
 	else if (strstr(current_map, "a50"))
 	{
-		level = 2;
+		level = _single_player_map_a50;
 	}
 	else if (strstr(current_map, "b30"))
 	{
-		level = 3;
+		level = _single_player_map_b30;
 	}
 	else if (strstr(current_map, "b40"))
 	{
-		level = 4;
+		level = _single_player_map_b40;
 	}
 	else if (strstr(current_map, "c10"))
 	{
-		level = 5;
+		level = _single_player_map_c10;
 	}
 	else if (strstr(current_map, "c20"))
 	{
-		level = 6;
+		level = _single_player_map_c20;
 	}
 	else if (strstr(current_map, "c40"))
 	{
-		level = 7;
+		level = _single_player_map_c40;
 	}
 	else if (strstr(current_map, "d20"))
 	{
-		level = 8;
+		level = _single_player_map_d20;
 	}
 	else if (strstr(current_map, "d40"))
 	{
-		level = 9;
+		level = _single_player_map_d40;
 	}
 	else
 	{
@@ -1311,7 +1311,7 @@ void main_pregame_render(
 	real_vector3d forward;
 	real_vector3d up;
 
-	collision_log_continue_period(1);
+	collision_log_continue_period(_collision_period_render_frame);
 	sound_render();
 
 	set_real_point3d(&camera_position, 0.f, 0.f, 0.f);
@@ -1346,7 +1346,7 @@ void set_window_camera_values(
 		current_window->rasterizer_camera.vertical_field_of_view = 2.f*arctangent(render_camera_get_adjusted_field_of_view_tangent(observer->field_of_view)*0.75f, 1.f);
 
 		if (current_window->local_player_index!=NONE && !console_is_active() && !game_time_get_paused() &&
-			director_get_perspective(current_window->local_player_index)!=3)
+			director_get_perspective(current_window->local_player_index)!=_director_perspective_neutral)
 		{
 			real_matrix4x3 effect_matrix;
 			real_matrix4x3 observer_matrix;
@@ -1397,7 +1397,7 @@ static void main_game_render(
 	struct render_window *current_window;
 
 	lock_global_random_seed();
-	collision_log_continue_period(1);
+	collision_log_continue_period(_collision_period_render_frame);
 	sound_render();
 
 	single_screen = game_engine_force_single_screen();
@@ -1766,7 +1766,7 @@ static void main_won_map_private(
 
 	next_level = main_get_solo_level_from_name(main_globals.soloplayer_map_name)+1;
 
-	if (next_level>=10)
+	if (next_level>=NUMBER_OF_SINGLE_PLAYER_LEVELS)
 	{
 		next_level = NONE;
 	}
@@ -2306,7 +2306,7 @@ void main_movie_start(
 {
 	match_assert("c:\\halo\\SOURCE\\main\\main.c", 2715, main_globals.movie==NULL);
 
-	main_globals.movie = bitmap_2d_new(640, 480, 0, _bitmap_format_x8r8g8b8);
+	main_globals.movie = bitmap_2d_new(RASTERIZER_TARGET_RENDER_PRIMARY_WIDTH, RASTERIZER_TARGET_RENDER_PRIMARY_HEIGHT, 0, _bitmap_format_x8r8g8b8);
 
 	if (main_globals.movie)
 	{
@@ -2371,7 +2371,7 @@ void main_framerate_render(
 			str[NUMBEROF(str)-1] = '\0';
 			bounds.x0 = bounds.x1-50;
 			bounds.y0 = bounds.y1-50;
-			draw_string_set_format(NONE, _text_justification_left, 0);
+			draw_string_set_format(_text_style_plain, _text_justification_left, 0);
 			draw_string_set_color(frame_rate>=30 ? global_real_argb_green : global_real_argb_red);
 			draw_string_set_font(font_index);
 			rasterizer_draw_string(&bounds, NULL, NULL, 0, str);
@@ -2398,7 +2398,7 @@ void main_framerate_render(
 				bounds.y1 -= 20;
 				_snprintf(str, NUMBEROF(str)-1, "%d", main_globals.vblank_flip_deltas[delta_index]);
 				str[NUMBEROF(str)-1] = '\0';
-				draw_string_set_format(NONE, _text_justification_right, 0);
+				draw_string_set_format(_text_style_plain, _text_justification_right, 0);
 				draw_string_set_font(font_index);
 				draw_string_set_color(main_globals.vblank_flip_deltas[delta_index]==2 ? global_real_argb_white : global_real_argb_red);
 				rasterizer_draw_string(&bounds, NULL, NULL, 0, str);
@@ -2414,7 +2414,7 @@ void main_framerate_render(
 		{
 			real progress;
 
-			if (cache_files_precache_map_status(&progress)==0)
+			if (cache_files_precache_map_status(&progress)==_cached_map_file_in_progress)
 			{
 				char str[4];
 				rectangle2d bounds = render.camera.window_bounds;
@@ -2424,7 +2424,7 @@ void main_framerate_render(
 				str[NUMBEROF(str)-1] = '\0';
 				bounds.x0 = bounds.x1-50;
 				bounds.y0 = bounds.y1-100;
-				draw_string_set_format(NONE, _text_justification_left, 0);
+				draw_string_set_format(_text_style_plain, _text_justification_left, 0);
 				draw_string_set_color(global_real_argb_purple);
 				draw_string_set_font(font_index);
 				rasterizer_draw_string(&bounds, NULL, NULL, 0, str);
@@ -2484,17 +2484,17 @@ void halt_and_catch_fire(
 				parameters.camera.mirrored = FALSE;
 				parameters.camera.vertical_field_of_view = 2.f*arctangent(render_camera_get_adjusted_field_of_view_tangent(DEGREES_TO_RADIANS(80.f))*0.75f, 1.f);
 				parameters.camera.viewport_bounds.x0 = 0;
-				parameters.camera.viewport_bounds.x1 = 640;
+				parameters.camera.viewport_bounds.x1 = RASTERIZER_TARGET_RENDER_PRIMARY_WIDTH;
 				parameters.camera.viewport_bounds.y0 = 0;
-				parameters.camera.viewport_bounds.y1 = 480;
+				parameters.camera.viewport_bounds.y1 = RASTERIZER_TARGET_RENDER_PRIMARY_HEIGHT;
 				parameters.camera.z_near = rasterizer_globals.z_near;
 				parameters.camera.z_far = rasterizer_globals.z_far;
 				render_camera_build_frustum(&parameters.camera, NULL, &parameters.frustum, TRUE);
-				parameters.rasterizer_target = 0;
+				parameters.rasterizer_target = _rasterizer_target_render_primary;
 				parameters.fog.atmospheric_color = *global_real_rgb_blue;
 				parameters.fog.atmospheric_maximum_distance = 0.f;
 				parameters.fog.atmospheric_minimum_distance = 0.f;
-				parameters.fog.planar_mode = 0;
+				parameters.fog.planar_mode = _render_planar_fog_mode_off;
 				render.camera = parameters.camera;
 				rasterizer_window_begin(&parameters);
 			}
@@ -2507,7 +2507,7 @@ void halt_and_catch_fire(
 				cursor.x = 0;
 				cursor.y = 0;
 				bounds = rasterizer_globals.frame_bounds;
-				draw_string_set_draw_mode(font_index, NONE, 0, 0, global_real_argb_white);
+				draw_string_set_draw_mode(font_index, _text_style_plain, _text_justification_left, 0, global_real_argb_white);
 				draw_string_set_tab_stops(NULL, 0);
 				draw_string_set_color(global_real_argb_white);
 				rasterizer_draw_string(&bounds, NULL, &cursor, -4, "halobeta xbox 01.01.14.2342 built at: Jan 14 2002 12:49:20");

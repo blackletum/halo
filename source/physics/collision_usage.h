@@ -57,7 +57,10 @@ enum
 
 enum
 {
-	NUMBER_OF_COLLISION_TIME_PERIODS = 3,
+	_collision_period_game_tick = 0,
+	_collision_period_render_frame,
+	_collision_period_player_input,
+	NUMBER_OF_COLLISION_TIME_PERIODS,
 };
 
 /* ---------- macros */

@@ -165,7 +165,7 @@ void render_frame_pregame(
 	rasterizer_parameters.camera = window->rasterizer_camera;
 	render_camera_build_frustum(&rasterizer_parameters.camera, NULL, &rasterizer_parameters.frustum, TRUE);
 
-	rasterizer_parameters.rasterizer_target = 0;
+	rasterizer_parameters.rasterizer_target = _rasterizer_target_render_primary;
 	rasterizer_window_begin(&rasterizer_parameters);
 
 	render_ui_widgets(0, &window->rasterizer_camera.viewport_bounds);

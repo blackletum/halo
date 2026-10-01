@@ -78,8 +78,32 @@ enum
 	_rasterizer_lock_bsp_switch
 };
 
+enum
+{
+	_rasterizer_target_render_primary = 0,
+	_rasterizer_target_render_secondary,
+	_rasterizer_target_shadow_primary,
+	_rasterizer_target_shadow_secondary,
+	_rasterizer_target_sun_glow_primary,
+	_rasterizer_target_sun_glow_secondary,
+	_rasterizer_target_water,
+	_rasterizer_target_z,
+	NUMBER_OF_RASTERIZER_TARGETS,
+};
+
+enum
+{
+	_render_planar_fog_mode_off = 0,
+	_render_planar_fog_mode_normal,
+	_render_planar_fog_mode_fully_fogged,
+	NUMBER_OF_RENDER_PLANAR_FOG_MODES,
+};
+
 
 /* ---------- macros */
+
+#define RASTERIZER_TARGET_RENDER_PRIMARY_WIDTH 640
+#define RASTERIZER_TARGET_RENDER_PRIMARY_HEIGHT 480
 
 /* ---------- structures */
 
