@@ -168,16 +168,16 @@ short player_spawn_count = 1;
 boolean global_frame_rate_throttle = TRUE;
 short global_screenshot_size = 1;
 
-static struct _main_globals main_globals;
+static struct _main_globals main_globals = {0};
 
-boolean debug_force_frame_rate_update;
-boolean debug_no_drawing;
-boolean debug_game_save;
-boolean debug_frame_rate;
-boolean display_framerate;
-boolean display_vblank_deltas;
-boolean display_precache_progress;
-short global_screenshot_count;
+boolean debug_force_frame_rate_update = FALSE;
+boolean debug_no_drawing = FALSE;
+boolean debug_game_save = FALSE;
+boolean debug_frame_rate = FALSE;
+boolean display_framerate = FALSE;
+boolean display_vblank_deltas = FALSE;
+boolean display_precache_progress = FALSE;
+short global_screenshot_count = 0;
 
 /* ---------- public code */
 
@@ -1390,7 +1390,7 @@ long main_get_window_count(
 static void main_game_render(
 	double time_delta_since_tick_sec)
 {
-	static struct render_window window[MAXIMUM_NUMBER_OF_LOCAL_PLAYERS+1];
+	static struct render_window window[MAXIMUM_NUMBER_OF_LOCAL_PLAYERS+1] = {0};
 	long window_index;
 	boolean single_screen;
 	short local_player_index;
@@ -1838,12 +1838,12 @@ static void main_frame_rate_debug(
 		RUNS_BEFORE_RESET = 60,
 	};
 
-	static real last_spf[NUMBER_OF_FRAME_SAMPLES];
-	static word bad_frame_flags;
-	static char current_spf_index;
-	static boolean wait_for_good_framerate;
-	static char good_framerate_count;
-	static boolean need_to_initialize;
+	static real last_spf[NUMBER_OF_FRAME_SAMPLES] = {0};
+	static word bad_frame_flags = 0;
+	static char current_spf_index = 0;
+	static boolean wait_for_good_framerate = FALSE;
+	static char good_framerate_count = 0;
+	static boolean need_to_initialize = FALSE;
 
 	if (need_to_initialize && !debug_frame_rate)
 	{
@@ -1860,7 +1860,7 @@ static void main_frame_rate_debug(
 	{
 		last_spf[current_spf_index] = main_globals.seconds_elapsed;
 
-		if (main_globals.seconds_elapsed>0.036)
+		if (main_globals.seconds_elapsed>36*0.001)
 		{
 			bad_frame_flags |= 1<<current_spf_index;
 		}
