@@ -58,6 +58,18 @@ struct network_player
 	char player_list_index;
 };
 
+struct multiplayer_player_info
+{
+	real speed_multiplier;
+	long teleporter_index;
+	long state_message;
+	long state_message_data;
+	long player_display_index;
+	long player_display_count;
+	long time_of_death;
+	long special;
+};
+
 struct player_datum
 {
 	short identifier;
@@ -79,12 +91,20 @@ struct player_datum
 	long aim_assist_timestamp;
 	struct network_player network_player_data;
 	short powerup_durations[NUMBER_OF_PLAYER_POWERUPS];
+	struct multiplayer_player_info multiplayer;
 	struct game_statistics statistics;
 	long telefrag_timeout;
 	long quit_out_of_game_time;
 	boolean is_blocking_teleporter;
 	boolean quit_out_of_game;
-	struct player_action action_input;
+};
+
+struct unit_camera_info
+{
+	long unit_index;
+	short seat_index;
+	struct unit_camera *unit_camera;
+	real_point3d unit_origin;
 };
 
 /* ---------- prototypes/PLAYER_CONTROL.C */
@@ -93,6 +113,11 @@ void player_control_update(real seconds_elapsed);
 
 void player_control_unzoom(long unit_index);
 long player_control_get_unit_index(short local_player_index);
+real_vector3d *player_control_get_facing_direction(short local_player_index, real_vector3d *direction);
+real player_control_get_field_of_view(short local_player_index);
+real_euler_angles2d const *player_control_get_facing_angles(short local_player_index);
+long player_control_get_aiming_unit_index(short local_player_index);
+void player_control_get_unit_camera_info(short local_player_index, struct unit_camera_info *camera_info);
 
 /* ---------- prototypes/PLAYERS.C */
 

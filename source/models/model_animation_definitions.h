@@ -196,6 +196,11 @@ void animation_get_node_orientations(
 	struct animation const *animation,
 	short frame_index, 
 	struct real_orientation *node_orientations);
+void animation_get_root_matrix(
+	struct model const *model,
+	struct animation const *animation,
+	short frame_index,
+	struct real_matrix4x3 *matrix);
 void replacement_animation_apply(
 	struct animation const *animation,
 	short frame_index,

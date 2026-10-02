@@ -1334,7 +1334,6 @@ __inline real_vector3d *local_random_vector_in_cone3d(
 	return seed_random_vector_in_cone3d(get_global_local_random_seed_address(), axis, inner_cone_angle, outer_cone_angle, result);
 }
 
-// TODO: doesn't match, needs cleanup
 __inline real uniform_cubic_spline(
 	real f0, 
 	real f1, 
@@ -1344,17 +1343,16 @@ __inline real uniform_cubic_spline(
 	real h, 
 	real t)
 {
-	real v7, v8, v9, v10, v11;
-	v7 = f2 - f1;
-	v8 = f1 - f0;
-	v9 = (f3 - f2) - (f2 - f1);
-	v10 = v7 - (f1 - f0);
-	v11 = ((((((((t - ((h * 2.f) + t0)) * (v9 - v10)) 
-		/ (h * 3.f)) + v10) * (t - (t0 + h))) 
-		/ (h * 2.f)) + v8)
-		* ((t - t0) / h))
-		 + f0;
-	return v11;
+	match_assert("..\\math\\real_math.h", 1508, h > 0.0f);
+	match_assert("..\\math\\real_math.h", 1509, t >= t0 && t <= t0 + 3.0f*h);
+
+	f3 = f3 - f2;
+	f2 = f2 - f1;
+	f1 = f1 - f0;
+	f3 = f3 - f2;
+	f2 = f2 - f1;
+	f3 = f3 - f2;
+	return (((((((t - ((h * 2.f) + t0)) * f3) / (h * 3.f)) + f2) * (t - (t0 + h))) / (h * 2.f)) + f1) * (t - t0) / h + f0;
 }
 
 // TODO: doesn't match, needs cleanup
@@ -1383,55 +1381,21 @@ __inline real nonuniform_cubic_spline(
 	return v11;
 }
 
-// TODO: doesn't match, needs cleanup. uses above inlines
 __inline void uniform_cubic_spline_vector3d(
-	real_vector3d *result, 
+	real_vector3d *result,
 	real_vector3d const *f0,
-	real_vector3d const *f1, 
-	real_vector3d const *f2, 
+	real_vector3d const *f1,
+	real_vector3d const *f2,
 	real_vector3d const *f3,
 	real t0,
 	real h,
 	real t)
 {
-	real v8, v9, v10, v11, v12, v13;
-	v8 = h * 2.f;
-	v9 = h * 3.f;
-	v11 = (h * 2.f) + t0;
-	v12 = t - (t0 + h);
-	v13 = ((((((t - ((h * 2.f) + t0))
-		* (((f3->i - f2->i) - (f2->i - f1->i)) - ((f2->i - f1->i) - (f1->i - f0->i))))
-		/ (h * 3.f))
-		+ ((f2->i - f1->i) - (f1->i - f0->i)))
-		* (t - (t0 + h)))
-		 / (h * 2.f));
-	v10 = 1.0 / h;
+	result->i = uniform_cubic_spline(f0->i, f1->i, f2->i, f3->i, t0, h, t);
+	result->j = uniform_cubic_spline(f0->j, f1->j, f2->j, f3->j, t0, h, t);
+	result->k = uniform_cubic_spline(f0->k, f1->k, f2->k, f3->k, t0, h, t);
 
-	result->i = (((v13 + (f1->i - f0->i)) * v10) * (t - t0)) + f0->i;
-
-	result->j = (((((((((t - v11)
-		* (((f3->j - f2->j) - (f2->j - f1->j))
-		- ((f2->j - f1->j) - (f1->j - f0->j))))
-		/ v9)
-		+ ((f2->j - f1->j) - (f1->j - f0->j)))
-		* v12)
-		/ v8)
-		+ (f1->j - f0->j))
-		* v10)
-		* (t - t0))
-		+ f0->j;
-
-	result->k = (((((((((t - v11)
-		* (((f3->k - f2->k) - (f2->k - f1->k))
-		- ((f2->k - f1->k) - (f1->k - f0->k))))
-		/ v9)
-		+ ((f2->k - f1->k) - (f1->k - f0->k)))
-		* v12)
-		/ v8)
-		+ (f1->k - f0->k))
-		* v10)
-		* (t - t0))
-		+ f0->k;
+	return;
 }
 
 // TODO: doesn't match, needs cleanup. uses above inlines

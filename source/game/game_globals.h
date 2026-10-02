@@ -147,6 +147,11 @@ struct game_globals_grenade
 	struct tag_reference projectile;
 };
 
+struct game_globals_camera
+{
+	struct tag_reference default_unit_camera_track;
+};
+
 struct game_globals_player_control
 {
 	real magnetism_friction;

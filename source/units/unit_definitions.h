@@ -64,6 +64,13 @@ enum
 	NUMBER_OF_UNIT_SEAT_FLAGS,
 };
 
+enum
+{
+	_unit_camera_track_loose = 0,
+	_unit_camera_track_tight,
+	MAXIMUM_NUMBER_OF_UNIT_CAMERA_TRACKS,
+};
+
 /* ---------- macros */
 
 #define unit_definition_get(index) ((struct unit_definition *)tag_get(UNIT_DEFINITION_TAG, index))
@@ -78,6 +85,12 @@ struct unit_camera
 	real pitch_minimum;
 	real pitch_maximum;
 	struct tag_block unit_camera_tracks;
+};
+
+struct unit_camera_track
+{
+	struct tag_reference track;
+	long unused[3];
 };
 
 struct unit_seat

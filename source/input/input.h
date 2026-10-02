@@ -211,6 +211,19 @@ enum
 
 enum
 {
+	_mouse_button_left = 0,
+	_mouse_button_middle,
+	_mouse_button_right,
+	_mouse_button_x1,
+	_mouse_button_x2,
+	_mouse_button_x3,
+	_mouse_button_x4,
+	_mouse_button_x5,
+	NUMBER_OF_MOUSE_BUTTONS,
+};
+
+enum
+{
 	_gamepad_stick_left = 0,
 	_gamepad_stick_right,
 	NUMBER_OF_GAMEPAD_STICKS
@@ -231,6 +244,14 @@ struct vibrate_data
 {
 	word left_frequency;
 	word right_frequency;
+};
+
+struct mouse_state
+{
+	long dx;
+	long dy;
+	long dw;
+	byte button_frames[NUMBER_OF_MOUSE_BUTTONS];
 };
 
 struct gamepad_state
