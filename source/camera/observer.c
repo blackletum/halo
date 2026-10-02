@@ -86,7 +86,7 @@ void observer_set_camera(
 	{
 		observer->first_command = TRUE;
 		command->timer = 0.f;
-		observer->pending_command->flags |= FLAG(_observer_command_force_time_bit);
+		SET_FLAG(observer->pending_command->flags, _observer_command_force_time_bit, TRUE);
 		csmemset(observer->pending_command->parameter_timers, 0, sizeof(observer->pending_command->parameter_timers));
 	}
 

@@ -232,31 +232,26 @@ short director_desired_perspective(
 		if (unit->object.parent_object_index != NONE)
 		{
 			struct object_datum *parent = object_get_and_verify_type(unit->object.parent_object_index, NONE);
+			boolean third_person_on_enter = FALSE;
 
 			if (TEST_FLAG(_object_mask_unit, parent->object.type))
 			{
 				struct unit_seat const *seat = TAG_BLOCK_GET_ELEMENT(&unit_definition_get(parent->definition_index)->unit.seats, unit->unit.parent_seat_index, struct unit_seat);
-				boolean third_person_on_enter = TEST_FLAG(seat->flags, _unit_seat_third_person_on_enter_bit);
 
+				third_person_on_enter = TEST_FLAG(seat->flags, _unit_seat_third_person_on_enter_bit);
 				if (TEST_FLAG(seat->flags, _unit_seat_has_third_person_camera_bit))
 				{
 					perspective = _director_perspective_third_person;
 				}
+			}
 
-				if (third_person_on_enter && unit->unit.animation.state == 0x1a)
-				{
-					*seat_state = _entering_seat;
-					perspective = _director_perspective_third_person;
-				}
-				else if (third_person_on_enter && unit->unit.animation.state == 0x1b)
-				{
-					*seat_state = _exiting_seat;
-					perspective = _director_perspective_third_person;
-				}
-				else
-				{
-					*seat_state = _seat_idle;
-				}
+			if (third_person_on_enter && unit->unit.animation.state == 0x1a)
+			{
+				*seat_state = _entering_seat;
+			}
+			else if (third_person_on_enter && unit->unit.animation.state == 0x1b)
+			{
+				*seat_state = _exiting_seat;
 			}
 			else
 			{
@@ -298,8 +293,9 @@ void director_load_camera(
 		real_vector3d forward;
 		real_vector3d up;
 		real_vector3d default_up;
+		real_vector3d cross;
 		real field_of_view;
-		struct director *director = &director_globals.local_players[0];
+		struct director *director = director_get(0);
 		struct flying_camera *camera = (struct flying_camera *)director->camera_data;
 
 		fscanf(file, "%f %f %f\n", &position.x, &position.y, &position.z);
@@ -311,7 +307,8 @@ void director_load_camera(
 		flying_camera_new_from_point_and_vector(camera, &position, &forward);
 		observer_up_from_forward(&forward, &default_up);
 		camera->roll = angle_between_vectors3d(&up, &default_up);
-		if (triple_product3d(&up, &default_up, &forward) > 0.f)
+		cross_product3d(&up, &default_up, &cross);
+		if (dot_product3d(&cross, &forward) > 0.f)
 		{
 			camera->roll = -camera->roll;
 		}

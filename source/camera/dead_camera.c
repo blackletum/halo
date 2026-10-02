@@ -32,6 +32,7 @@ void dead_camera_new(
 {
 	struct observer_result const *observer = observer_get_camera(local_player_index);
 
+	match_assert("c:\\halo\\SOURCE\\camera\\dead_camera.c", 22, sizeof(struct dead_camera)<=DIRECTOR_CAMERA_DATA_SIZE);
 	match_assert("c:\\halo\\SOURCE\\camera\\dead_camera.c", 23, camera);
 
 	camera->position = observer->position;
@@ -55,12 +56,7 @@ void dead_camera_update(
 	struct camera_control const *controls,
 	struct observer_command *result)
 {
-	struct object_datum *object = NULL;
-
-	if (camera->unit_index!=NONE)
-	{
-		object = object_try_and_get(camera->unit_index);
-	}
+	struct object_datum *object = camera->unit_index!=NONE ? object_try_and_get(camera->unit_index) : NULL;
 
 	if (object)
 	{
@@ -112,10 +108,7 @@ void dead_camera_update(
 		camera->switch_timer = game_engine_running() ? multiplayer_switch_timer : singleplayer_switch_timer;
 	}
 
-	if (TEST_FLAG(result->flags, _observer_command_valid_bit))
-	{
-		match_assert_valid_observer_command("c:\\halo\\SOURCE\\camera\\dead_camera.c", 158, result);
-	}
+	match_assert_valid_observer_command("c:\\halo\\SOURCE\\camera\\dead_camera.c", 158, result);
 
 	return;
 }

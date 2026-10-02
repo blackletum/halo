@@ -101,7 +101,7 @@ void following_camera_update(
 	{
 		if (camera_info.unit_index != camera->unit_index || camera_info.seat_index != camera->seat_index)
 		{
-			result->timer = 1.f;
+			result->timer = MAX(1.f, result->timer);
 		}
 	}
 
@@ -151,10 +151,7 @@ void following_camera_update(
 
 	observer_up_from_forward(&result->forward, &result->up);
 
-	if (TEST_FLAG(result->flags, _observer_command_valid_bit))
-	{
-		match_assert_valid_observer_command("c:\\halo\\SOURCE\\camera\\following_camera.c", 238, result);
-	}
+	match_assert_valid_observer_command("c:\\halo\\SOURCE\\camera\\following_camera.c", 238, result);
 
 	camera->initialized = TRUE;
 
@@ -198,27 +195,13 @@ static void camera_track_splut(
 	real pitch,
 	real_vector3d *offset)
 {
-	long camera_track_index = NONE;
+	struct unit_camera_track const *unit_camera_track = camera->unit_camera_tracks.count ? TAG_BLOCK_GET_ELEMENT(&camera->unit_camera_tracks, MIN(_unit_camera_track_loose, camera->unit_camera_tracks.count - 1), struct unit_camera_track) : NULL;
+	long camera_track_index = unit_camera_track && unit_camera_track->track.index != NONE ? unit_camera_track->track.index : TAG_BLOCK_GET_ELEMENT(&scenario_get_game_globals()->camera, 0, struct game_globals_camera)->default_unit_camera_track.index;
 	struct camera_track_definition const *camera_track;
 	short start_index;
 	short index;
 	real h;
 	real t;
-
-	if (camera->unit_camera_tracks.count)
-	{
-		struct unit_camera_track const *unit_camera_track = TAG_BLOCK_GET_ELEMENT(&camera->unit_camera_tracks, MIN(_unit_camera_track_loose, camera->unit_camera_tracks.count - 1), struct unit_camera_track);
-
-		if (unit_camera_track)
-		{
-			camera_track_index = unit_camera_track->track.index;
-		}
-	}
-
-	if (camera_track_index == NONE)
-	{
-		camera_track_index = TAG_BLOCK_GET_ELEMENT(&scenario_get_game_globals()->camera, 0, struct game_globals_camera)->default_unit_camera_track.index;
-	}
 
 	camera_track = camera_track_definition_get(camera_track_index);
 

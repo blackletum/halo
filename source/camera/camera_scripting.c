@@ -228,9 +228,11 @@ void scripted_camera_update(
 	struct observer_command *result)
 {
 	real_point3d reference_point = *global_origin3d;
+	boolean valid = TRUE;
 	real speed = game_time_get_speed();
 
-	result->flags = FLAG(_observer_command_force_time_bit);
+	result->flags = 0;
+	SET_FLAG(result->flags, _observer_command_force_time_bit, TRUE);
 	SET_FLAG(result->flags, _observer_command_freeze_camera_bit, game_time_get_paused());
 
 	switch (camera_script_globals.mode)
@@ -241,47 +243,49 @@ void scripted_camera_update(
 			{
 				struct object_datum const *object = object_try_and_get(camera_script_globals.relative_object_index);
 
-				if (!object)
+				if (object)
 				{
-					break;
+					reference_point = object->object.bounding_sphere_center;
 				}
-
-				reference_point = object->object.bounding_sphere_center;
+				else
+				{
+					valid = FALSE;
+				}
 			}
 
-			result->timer = speed != 0.f ? camera_script_globals.time_stop / speed : 0.f;
-			result->field_of_view = camera_script_globals.field_of_view;
-			result->forward = camera_script_globals.forward;
-			result->up = camera_script_globals.up;
-
-			if (camera_script_globals.relative_object_index != NONE)
+			if (valid)
 			{
-				real angle = arctangent(result->forward.j, result->forward.i);
-				real distance = dot_product3d((real_vector3d const *)&camera_script_globals.point, &result->forward);
-				real_vector3d world_offset;
+				result->timer = speed != 0.f ? camera_script_globals.time_stop / speed : 0.f;
+				result->field_of_view = camera_script_globals.field_of_view;
+				result->forward = camera_script_globals.forward;
+				result->up = camera_script_globals.up;
 
-				if (distance > 0.f)
+				if (camera_script_globals.relative_object_index != NONE)
 				{
-					distance = 0.f;
+					real angle = arctangent(result->forward.j, result->forward.i);
+					real distance = dot_product3d((real_vector3d const *)&camera_script_globals.point, &result->forward);
+					real_vector3d world_offset;
+
+					distance = MIN(distance, 0.f);
+
+					result->focus_distance = -distance;
+					result->focus_position = reference_point;
+					world_offset.i = camera_script_globals.point.x - distance * result->forward.i;
+					world_offset.j = camera_script_globals.point.y - distance * result->forward.j;
+					world_offset.k = camera_script_globals.point.z - distance * result->forward.k;
+
+					result->focus_offset.i = world_offset.i * cosine(angle) + world_offset.j * sine(angle);
+					result->focus_offset.j = world_offset.i * sine(angle) - world_offset.j * cosine(angle);
+					result->focus_offset.k = world_offset.k;
+
+					result->position_timer = 0.f;
+					result->position_flags = TRUE;
+				}
+				else
+				{
+					result->focus_position = camera_script_globals.point;
 				}
 
-				result->focus_distance = -distance;
-				result->focus_position = reference_point;
-				world_offset.i = camera_script_globals.point.x - distance * result->forward.i;
-				world_offset.j = camera_script_globals.point.y - distance * result->forward.j;
-				world_offset.k = camera_script_globals.point.z - distance * result->forward.k;
-
-				result->position_timer = 0.f;
-				result->position_flags = TRUE;
-				SET_FLAG(result->flags, _observer_command_valid_bit, TRUE);
-
-				result->focus_offset.i = world_offset.i * cosine(angle) + world_offset.j * sine(angle);
-				result->focus_offset.j = world_offset.i * sine(angle) - world_offset.j * cosine(angle);
-				result->focus_offset.k = world_offset.k;
-			}
-			else
-			{
-				result->focus_position = camera_script_globals.point;
 				SET_FLAG(result->flags, _observer_command_valid_bit, TRUE);
 			}
 
@@ -292,9 +296,10 @@ void scripted_camera_update(
 		{
 			struct animation_graph const *animation_graph = animation_graph_definition_get(camera_script_globals.animation_graph_index);
 			struct animation const *animation = TAG_BLOCK_GET_ELEMENT(&animation_graph->animations, camera_script_globals.animation_index, struct animation);
-			short frame_index = PIN((short)(animation->frame_count - camera_script_globals.time_stop * TICKS_PER_SECOND), 0, animation->frame_count - 1);
+			short frame_index = (short)(animation->frame_count - camera_script_globals.time_stop * TICKS_PER_SECOND);
 			real_matrix4x3 frame_matrix;
 
+			frame_index = PIN(frame_index, 0, animation->frame_count - 1);
 			animation_get_root_matrix(NULL, animation, frame_index, &frame_matrix);
 
 			result->field_of_view = DEGREES_TO_RADIANS(70.f);
@@ -337,10 +342,7 @@ void scripted_camera_update(
 	camera_script_globals.time_stop = MAX(0.f, camera_script_globals.time_stop - speed * controls->seconds_elapsed);
 	camera_script_globals.first_update = FALSE;
 
-	if (TEST_FLAG(result->flags, _observer_command_valid_bit))
-	{
-		match_assert_valid_observer_command("c:\\halo\\SOURCE\\camera\\camera_scripting.c", 370, result);
-	}
+	match_assert_valid_observer_command("c:\\halo\\SOURCE\\camera\\camera_scripting.c", 370, result);
 
 	return;
 }

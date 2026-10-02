@@ -278,9 +278,7 @@ void editor_camera_move_to_point(
 	match_assert("c:\\halo\\SOURCE\\camera\\editor_flying_camera.c", 139, point);
 
 	vector3d_from_euler_angles2d(&forward, &editor_camera->orientation);
-	editor_camera->position.x = point->x - forward.i * 2.5f;
-	editor_camera->position.y = point->y - forward.j * 2.5f;
-	editor_camera->position.z = point->z - forward.k * 2.5f;
+	point_from_line3d(point, &forward, -2.5f, &editor_camera->position);
 
 	return;
 }
@@ -504,9 +502,7 @@ static void editor_camera_flying_update(
 	{
 		struct object_datum *object;
 
-		unit_offset.i += displacement.i;
-		unit_offset.j += displacement.j;
-		unit_offset.k += displacement.k;
+		add_vectors3d(&unit_offset, &displacement, &unit_offset);
 		object = object_get_and_verify_type(unit_focus, NONE);
 		point_from_line3d(&object->object.bounding_sphere_center, &unit_offset, 1.f, &new_position);
 	}

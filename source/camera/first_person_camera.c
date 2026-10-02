@@ -158,10 +158,7 @@ static void first_person_camera_for_unit_and_vector(
 		result->flags = FLAG(_observer_command_valid_bit);
 	}
 
-	if (TEST_FLAG(result->flags, _observer_command_valid_bit))
-	{
-		match_assert_valid_observer_command("c:\\halo\\SOURCE\\camera\\first_person_camera.c", 133, result);
-	}
+	match_assert_valid_observer_command("c:\\halo\\SOURCE\\camera\\first_person_camera.c", 133, result);
 
 	return;
 }
