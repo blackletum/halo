@@ -6,13 +6,15 @@ STATIC_CAMERA.C
 
 #include "cseries.h"
 #include "static_camera.h"
+#include "director.h"
+#include "observer.h"
 
 /* ---------- public code */
 
 void static_camera_new(
 	struct static_camera *camera,
 	real_point3d const *position,
-	real unknown /* fake name */,
+	real focus_distance,
 	real_vector3d const *forward,
 	real_vector3d const *up,
 	real field_of_view,
@@ -20,7 +22,7 @@ void static_camera_new(
 	long flags)
 {
 	camera->position = *position;
-	camera->unknown = unknown;
+	camera->focus_distance = focus_distance;
 	camera->forward = *forward;
 	camera->up = *up;
 	camera->field_of_view = field_of_view;

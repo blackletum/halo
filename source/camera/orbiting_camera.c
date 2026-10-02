@@ -22,7 +22,10 @@ static real const orbiting_camera_z_offset = 0.52f;
 
 /* ---------- public code */
 
-void orbiting_camera_new(struct orbiting_camera *camera, real distance, real_vector3d const *facing)
+void orbiting_camera_new(
+	struct orbiting_camera *camera,
+	real distance,
+	real_vector3d const *facing)
 {
 	camera->distance = distance;
 	euler_angles2d_from_vector3d(&camera->orientation, facing);
@@ -30,7 +33,10 @@ void orbiting_camera_new(struct orbiting_camera *camera, real distance, real_vec
 	return;
 }
 
-void orbiting_camera_update(struct orbiting_camera *camera, struct camera_control const *controls, struct observer_command *result)
+void orbiting_camera_update(
+	struct orbiting_camera *camera,
+	struct camera_control const *controls,
+	struct observer_command *result)
 {
 	struct unit_camera_info camera_info;
 

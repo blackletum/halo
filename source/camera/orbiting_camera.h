@@ -8,11 +8,6 @@ header included in hcex build.
 #define __ORBITING_CAMERA_H
 #pragma once
 
-/* ---------- headers */
-
-#include "director.h"
-#include "observer.h"
-
 /* ---------- constants */
 
 /* ---------- macros */

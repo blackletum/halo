@@ -8,11 +8,6 @@ header included in hcex build.
 #define __STATIC_CAMERA_H
 #pragma once
 
-/* ---------- headers */
-
-#include "director.h"
-#include "observer.h"
-
 /* ---------- constants */
 
 /* ---------- macros */
@@ -21,9 +16,8 @@ header included in hcex build.
 
 struct static_camera
 {
-	/* fake names */
 	real_point3d position; /* fake name */
-	real unknown; /* fake name */
+	real focus_distance;
 	real_vector3d forward; /* fake name */
 	real_vector3d up; /* fake name */
 	real field_of_view; /* fake name */
@@ -37,7 +31,7 @@ struct static_camera
 void static_camera_new(
 	struct static_camera *camera,
 	real_point3d const *position,
-	real unknown /* fake name */,
+	real focus_distance,
 	real_vector3d const *forward,
 	real_vector3d const *up,
 	real field_of_view,
