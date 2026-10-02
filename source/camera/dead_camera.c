@@ -39,7 +39,7 @@ void dead_camera_new(
 	camera->field_of_view = DEGREES_TO_RADIANS(70.0f);
 	camera->distance = (real_local_random_range(2.0f, 6.0f));
 	camera->orientation.yaw = (real_local_random_range(0.0f, 2*_pi));
-	camera->orientation.pitch = -(real_local_random_range(0.47123894f, 1.0995574f));
+	camera->orientation.pitch = -(real_local_random_range(0.47123894f, DEGREES_TO_RADIANS(63.f)));
 	camera->timer = dead_timer;
 	camera->switch_timer = unit_index!=NONE ? REAL_MAX : (game_engine_running() ? multiplayer_switch_timer : singleplayer_switch_timer);
 	camera->player_index = local_player_get_player_index(local_player_index);

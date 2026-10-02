@@ -115,7 +115,7 @@ static void first_person_camera_for_unit_and_vector(
 	result->focus_offset = *global_zero_vector3d;
 	result->focus_distance = 0.0f;
 	result->forward = *forward;
-	result->field_of_view = 1.2217305f;
+	result->field_of_view = DEGREES_TO_RADIANS(70.f);
 	observer_up_from_forward(&result->forward, &result->up);
 	match_assert("c:\\halo\\SOURCE\\camera\\first_person_camera.c", 82, valid_real_vector3d_axes2(&result->forward, &result->up));
 

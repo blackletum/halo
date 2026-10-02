@@ -2671,7 +2671,7 @@ static void unit_drop_item(
 	item->object.translational_velocity = *global_zero_vector3d;
 	item->object.angular_velocity = *global_zero_vector3d;
 
-	random_vector_in_cone3d(&unit->unit.aiming_vector, 0.f, 0.39269909f, &item_velocity);
+	random_vector_in_cone3d(&unit->unit.aiming_vector, 0.f, DEGREES_TO_RADIANS(22.5f), &item_velocity);
 	
 	scale_vector3d(&item_velocity, real_random_range(0.026666667f, 0.040000003f), &item_velocity);
 	object_get_velocities(unit_index, &unit_velocity, NULL);

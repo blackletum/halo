@@ -74,12 +74,12 @@ void bored_camera_update(
 			facing = *player_control_get_facing_angles(controls->local_player_index);
 			unit_get_camera_position(aiming_unit_index, &camera_position);
 
-			facing.pitch = real_local_random_range(-1.0995574f, 0.3926991f);
-			facing.yaw = real_local_random_range(-0.7853982f, 0.7853982f) + facing.yaw + _pi;
+			facing.pitch = real_local_random_range(DEGREES_TO_RADIANS(-63.f), DEGREES_TO_RADIANS(22.5f));
+			facing.yaw = real_local_random_range(DEGREES_TO_RADIANS(-45.f), DEGREES_TO_RADIANS(45.f)) + facing.yaw + _pi;
 			vector3d_from_euler_angles2d(&result->forward, &facing);
 			observer_up_from_forward(&result->forward, &result->up);
 
-			result->field_of_view = (real_local_random_range(0.5235988f, 1.3962634f));
+			result->field_of_view = (real_local_random_range(DEGREES_TO_RADIANS(30.f), DEGREES_TO_RADIANS(80.f)));
 			result->focus_distance = real_local_random_range(1.0f, 6.0f);
 			result->focus_velocity = *global_zero_vector3d;
 

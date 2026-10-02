@@ -3575,7 +3575,7 @@ static void ai_debug_render_actor(
 			real perception_factor;
 			real_point3d last_points[2][2][2];
 			real angle_itr;
-			real const angle_step = 0.08726646f;
+			real const angle_step = DEGREES_TO_RADIANS(5.f);
 
 			real_argb_color const *const *colors[2] =
 			{

@@ -46,7 +46,7 @@ void orbiting_camera_update(
 	if (controls->active)
 	{
 		camera->orientation.yaw -= controls->facing_delta.yaw;
-		camera->orientation.pitch = PIN(camera->orientation.pitch - controls->facing_delta.pitch, -1.2566371f, 1.2566371f);
+		camera->orientation.pitch = PIN(camera->orientation.pitch - controls->facing_delta.pitch, DEGREES_TO_RADIANS(-72.f), DEGREES_TO_RADIANS(72.f));
 		director_inhibit_input(controls->local_player_index);
 	}
 
