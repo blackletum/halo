@@ -379,7 +379,7 @@ void editor_camera_update(
 		if (is_scripted)
 		{
 			result->timer = 0.f;
-			result->flags |= 9;
+			result->flags |= FLAG(_observer_command_valid_bit) | FLAG(_observer_command_force_time_bit);
 		}
 	}
 

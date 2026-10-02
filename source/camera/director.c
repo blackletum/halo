@@ -410,7 +410,7 @@ void director_update(
 				director->camera_proc(director->camera_data, &controls, &command);
 			}
 
-			if (TEST_FLAG(command.flags, 0))
+			if (TEST_FLAG(command.flags, _observer_command_valid_bit))
 			{
 				if (director->camera_change_pause != 0.f)
 				{
@@ -418,9 +418,9 @@ void director_update(
 					{
 						director->camera_change_pause = 0.f;
 						command.position_timer = 0.f;
-						command.position_flags = 3;
+						command.position_flags = FLAG(_observer_time_valid_bit) | FLAG(_observer_time_force_bit);
 						command.distance_timer = 0.f;
-						command.distance_flags = 3;
+						command.distance_flags = FLAG(_observer_time_valid_bit) | FLAG(_observer_time_force_bit);
 					}
 					else
 					{
@@ -433,7 +433,7 @@ void director_update(
 			}
 			else
 			{
-				director->command.flags &= ~FLAG(0);
+				director->command.flags &= ~FLAG(_observer_command_valid_bit);
 			}
 			observer_set_camera(local_player_index, &director->command);
 		}
@@ -713,16 +713,16 @@ static boolean director_update_controls(
 
 		if (director_camera_switch_fast)
 		{
-			key = gamepad->buttons[4] == 1;
+			key = gamepad->buttons[_gamepad_analog_button_black] == 1;
 		}
 		else
 		{
-			key = gamepad->buttons[4] > 0 && gamepad->buttons[4] % TICKS_PER_SECOND == 0;
+			key = gamepad->buttons[_gamepad_analog_button_black] > 0 && gamepad->buttons[_gamepad_analog_button_black] % TICKS_PER_SECOND == 0;
 		}
 
 		if (director->camera_proc != first_person_camera_update && director->camera_proc != following_camera_update)
 		{
-			if (gamepad->buttons[15] == 1)
+			if (gamepad->buttons[_gamepad_binary_button_right_thumb] == 1)
 			{
 				director->debug_controls = !director->debug_controls;
 			}
@@ -731,9 +731,9 @@ static boolean director_update_controls(
 			{
 				long control_bits = 0;
 
-				SET_FLAG(control_bits, _camera_control_up_bit, gamepad->buttons[7]);
-				SET_FLAG(control_bits, _camera_control_down_bit, gamepad->buttons[6]);
-				controls->wheel_delta = ((gamepad->buttons[8] > 1) - (gamepad->buttons[9] > 1)) * 0.4f;
+				SET_FLAG(control_bits, _camera_control_up_bit, gamepad->buttons[_gamepad_analog_button_right_trigger]);
+				SET_FLAG(control_bits, _camera_control_down_bit, gamepad->buttons[_gamepad_analog_button_left_trigger]);
+				controls->wheel_delta = ((gamepad->buttons[_gamepad_binary_button_dpad_up] > 1) - (gamepad->buttons[_gamepad_binary_button_dpad_down] > 1)) * 0.4f;
 				director_process_variables(local_player_index, control_bits, controls->wheel_delta);
 				controls->facing_delta.yaw = gamepad->sticks[1].x * director_globals.dtime * -(_pi / 80000.f);
 				controls->facing_delta.pitch = gamepad->sticks[1].y * director_globals.dtime * (_pi / 160000.f);

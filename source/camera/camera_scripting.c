@@ -279,7 +279,7 @@ void scripted_camera_update(
 					result->focus_offset.k = world_offset.k;
 
 					result->position_timer = 0.f;
-					result->position_flags = TRUE;
+					result->position_flags = FLAG(_observer_time_valid_bit);
 				}
 				else
 				{
