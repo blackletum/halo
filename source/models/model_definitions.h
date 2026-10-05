@@ -8,7 +8,6 @@ header included in hcex build.
 #define __MODEL_DEFINITIONS_H
 #pragma once
 
-
 /* ---------- headers */
 
 #include "rasterizer_geometry.h"
@@ -155,11 +154,5 @@ struct model
 	struct tag_block geometries;
 	struct tag_block shaders;
 };
-
-/* ---------- prototypes/MODEL_DEFINITIONS.C */
-
-/* ---------- globals */
-
-/* ---------- public code */
 
 #endif // __MODEL_DEFINITIONS_H

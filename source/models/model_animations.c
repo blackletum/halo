@@ -10,10 +10,6 @@ MODEL_ANIMATIONS.C
 #include "damage_resistances.h"
 #include "shader_definitions.h"
 
-/* ---------- constants */
-
-/* ---------- macros */
-
 /* ---------- structures */
 
 struct animation_compressed_data_header /* fake name */

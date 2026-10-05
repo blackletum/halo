@@ -9,14 +9,6 @@ MODEL_ANIMATION_DEFINITIONS.C
 #include "vehicles.h"
 #include "sound_definitions.h"
 
-/* ---------- constants */
-
-/* ---------- macros */
-
-/* ---------- structures */
-
-/* ---------- prototypes */
-
 /* ---------- globals */
 
 static struct animation_list_entry weapon_type_animation_list_entries[] =
@@ -287,5 +279,3 @@ char *animation_list_get_string(
 
 	return result;
 }
-
-/* ---------- private code */

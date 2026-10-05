@@ -8,10 +8,6 @@ header included in hcex build.
 #define __MODEL_ANIMATION_DEFINITIONS_H
 #pragma once
 
-
-/* ---------- headers */
-
-
 /* ---------- constants */
 
 enum
@@ -40,7 +36,6 @@ enum
 	_animation_replacement,
 	NUMBER_OF_ANIMATION_TYPES,
 };
-
 
 enum
 {
@@ -75,7 +70,6 @@ enum
 	_object_overlay_mode_scale,
 	NUMBER_OF_OBJECT_OVERLAY_MODES,
 };
-
 
 /* ---------- macros */
 
@@ -329,7 +323,6 @@ void interpolate_node_orientations(
 	struct real_orientation *target_node_orientations,
 	short frame_index,
 	short frame_count);
-
 
 /* ---------- globals */
 

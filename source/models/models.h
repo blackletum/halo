@@ -40,8 +40,6 @@ enum
 	_render_model_first_person_bit,
 };
 
-/* ---------- macros */
-
 /* ---------- structures */
 
 struct animation_state

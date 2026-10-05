@@ -16,10 +16,6 @@ MODELS.C
 #include "render_debug.h"
 #include "triangle_strips.h"
 
-/* ---------- constants */
-
-/* ---------- macros */
-
 /* ---------- structures */
 
 enum
@@ -735,5 +731,3 @@ void model_build_tangent_matrices(
 
 	return;
 }
-
-/* ---------- private code */
