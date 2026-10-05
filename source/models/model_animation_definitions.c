@@ -279,6 +279,7 @@ char *animation_list_get_string(
 	{
 		result = list->animations[index].name;
 	}
+
 	if (!result)
 	{
 		result = "#<invalid>";

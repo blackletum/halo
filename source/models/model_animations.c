@@ -111,6 +111,7 @@ void animation_get_x_offsets(
 	{
 		*last_frame_offset_reference = offset;
 	}
+
 	if (key_frame_offset_reference)
 	{
 		*key_frame_offset_reference = key_frame_offset;
@@ -152,10 +153,12 @@ void animation_set_frame_size(
 		{
 			frame_size += sizeof(struct compressed_quaternion_8byte);
 		}
+
 		if (BIT_VECTOR_TEST_FLAG(animation->nodes_with_translation_flags, node_index))
 		{
 			frame_size += sizeof(real_point3d);
 		}
+
 		if (BIT_VECTOR_TEST_FLAG(animation->nodes_with_scale_flags, node_index))
 		{
 			frame_size += sizeof(real);
@@ -920,11 +923,13 @@ void aiming_screen_apply(
 			d_fraction += 1.f;
 			d0--;
 		}
+
 		if (d0>=aiming_screen->positive_yaw_frame_count)
 		{
 			d0 = aiming_screen->positive_yaw_frame_count-1;
 			d_fraction = 1.f;
 		}
+
 		if (d0<-aiming_screen->negative_yaw_frame_count)
 		{
 			d0 = -aiming_screen->negative_yaw_frame_count;
@@ -942,11 +947,13 @@ void aiming_screen_apply(
 			e_fraction += 1.f;
 			e0--;
 		}
+
 		if (e0>=aiming_screen->positive_pitch_frame_count)
 		{
 			e0 = aiming_screen->positive_pitch_frame_count-1;
 			e_fraction = 1.f;
 		}
+
 		if (e0<-aiming_screen->negative_pitch_frame_count)
 		{
 			e0 = -aiming_screen->negative_pitch_frame_count;
@@ -1278,6 +1285,7 @@ void animation_graph_node_matrices_from_orientations(
 				match_assert("c:\\halo\\SOURCE\\models\\model_animations.c", 1250, write_index<MAXIMUM_NODES_PER_MODEL);
 				node_stack[write_index++] = node->next_sibling_node_index;
 			}
+
 			if (node->first_child_node_index!=NONE)
 			{
 				match_assert("c:\\halo\\SOURCE\\models\\model_animations.c", 1256, write_index<MAXIMUM_NODES_PER_MODEL);

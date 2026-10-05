@@ -84,18 +84,22 @@ void render_model(
 		{
 			region_permutation_indices = default_region_permutation_indices;
 		}
+
 		if (!model_effect)
 		{
 			model_effect = &default_model_effect;
 		}
+
 		if (!change_colors)
 		{
 			change_colors = default_change_colors;
 		}
+
 		if (!function_values)
 		{
 			function_values = default_function_values;
 		}
+
 		if (!centroid)
 		{
 			centroid = &node_matrices->position;
@@ -259,10 +263,12 @@ void render_model(
 						{
 							_snprintf(string+csstrlen(string), 256-csstrlen(string), "%d", vertex_count);
 						}
+
 						if (render_model_vertex_counts && render_model_index_counts)
 						{
 							_snprintf(string+csstrlen(string), 256-csstrlen(string), "/");
 						}
+
 						if (render_model_index_counts)
 						{
 							_snprintf(string+csstrlen(string), 256-csstrlen(string), "%d", index_count);
@@ -527,6 +533,7 @@ void model_get_node_matrices(
 		{
 			node_index_stack[stack_count++] = node->next_sibling_node_index;
 		}
+
 		if (node->first_child_node_index!=NONE)
 		{
 			node_index_stack[stack_count++] = node->first_child_node_index;
@@ -569,6 +576,7 @@ void model_node_matrices_from_orientations(
 			{
 				node_stack[stack_count++] = node->next_sibling_node_index;
 			}
+
 			if (node->first_child_node_index!=NONE)
 			{
 				node_stack[stack_count++] = node->first_child_node_index;
