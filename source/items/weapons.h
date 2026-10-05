@@ -85,8 +85,8 @@ enum
 	_first_person_weapon_animation_primary_fire,
 	_first_person_weapon_animation_moving,
 	_first_person_weapon_animation_overlays,
-	_first_person_weapon_animation_light_on,
 	_first_person_weapon_animation_light_off,
+	_first_person_weapon_animation_light_on,
 	_first_person_weapon_animation_reload_while_empty,
 	_first_person_weapon_animation_reload_while_full,
 	_first_person_weapon_animation_overheated,
@@ -109,6 +109,22 @@ enum
 	_first_person_weapon_animation_overheated_exit,
 	_first_person_weapon_animation_overheated_supercharge_enter,
 	NUMBER_OF_FIRST_PERSON_WEAPON_ANIMATIONS,
+};
+
+enum
+{
+	_weapon_animation_idle = 0,
+	_weapon_animation_ready,
+	_weapon_animation_put_away,
+	_weapon_animation_primary_reload,
+	_weapon_animation_secondary_reload,
+	_weapon_animation_primary_chamber,
+	_weapon_animation_secondary_chamber,
+	_weapon_animation_primary_charged,
+	_weapon_animation_secondary_charged,
+	_weapon_animation_primary_recoil,
+	_weapon_animation_secondary_recoil,
+	NUMBER_OF_WEAPON_ANIMATIONS,
 };
 
 /* ---------- macros */
