@@ -254,20 +254,20 @@ void render_model(
 							color = global_real_argb_white;
 						}
 
-						csstrcpy(string, "");
+						strcpy(string, "");
 						if (render_model_vertex_counts)
 						{
-							_snprintf(string+csstrlen(string), 256-csstrlen(string), "%d", vertex_count);
+							_snprintf(string+strlen(string), 256-strlen(string), "%d", vertex_count);
 						}
 
 						if (render_model_vertex_counts && render_model_index_counts)
 						{
-							_snprintf(string+csstrlen(string), 256-csstrlen(string), "/");
+							_snprintf(string+strlen(string), 256-strlen(string), "/");
 						}
 
 						if (render_model_index_counts)
 						{
-							_snprintf(string+csstrlen(string), 256-csstrlen(string), "%d", index_count);
+							_snprintf(string+strlen(string), 256-strlen(string), "%d", index_count);
 						}
 
 						set_real_point3d(&point, centroid->x, centroid->y, centroid->z + height);
@@ -697,7 +697,7 @@ short model_find_node(
 		{
 			struct model_node *node = TAG_BLOCK_GET_ELEMENT(&model->nodes, node_index, struct model_node);
 
-			if (!csstrcmp(node->name, name))
+			if (!strcmp(node->name, name))
 			{
 				return node_index;
 			}
