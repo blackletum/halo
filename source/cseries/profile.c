@@ -16,7 +16,6 @@ PROFILE.C
 enum
 {
 	MAXIMUM_PROFILE_SECTIONS = 256,
-	PROFILE_SECTION_HISTORY_FRAMES = 120, /* fake name */
 	MAXIMUM_PROFILE_FRAMES = 256, /* fake name */
 	MAXIMUM_GAME_TICKS_PER_FRAME = 150,
 	MAXIMUM_PROFILE_MESSAGE_LENGTH = 512, /* fake name */
@@ -162,7 +161,7 @@ char const *format_strings[NUMBER_OF_PROFILE_DUMP_FORMAT_MODES] =
 	"|l%s|t|r% 3.2f/% 4ld|t% 3.2f/% 4ld|t% 3.2f/% 4ld|n"
 };
 
-static struct profile_globals_definition profile_globals = { 0 };
+static struct profile_globals_definition profile_globals;
 boolean profile_timebase_ticks = FALSE;
 boolean profile_global_enable = FALSE;
 boolean profile_dump_frames = FALSE;
@@ -435,8 +434,7 @@ void profile_frame_end(
 			}
 
 			frame_index = (frame_index + 1) % MAXIMUM_PROFILE_FRAMES;
-		}
-		while (frame_index != profile_globals.current_frame_history_index);
+		} while (frame_index != profile_globals.current_frame_history_index);
 	}
 
 	return;
@@ -804,8 +802,7 @@ void profile_dump(
 					frame_calls += section->interval_calls;
 					frame_time += section->interval_time * 1000.0 / profile_globals.clocks_per_second;
 					section_index++;
-				}
-				while (section_index < profile_globals.section_count && !strcmp(sections[section_index]->name, first_section->name));
+				} while (section_index < profile_globals.section_count && !strcmp(sections[section_index]->name, first_section->name));
 
 				switch (format_mode)
 				{

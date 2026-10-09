@@ -573,7 +573,7 @@ unsigned long base_address_from_symbol_name(
 static boolean is_valid_ebp(
 	void)
 {
-	return 0 == ((unsigned long)old_ebp & 3) && (unsigned long)old_ebp >= old_esp;
+	return 0 == ((unsigned long)old_ebp & MASK(2)) && (unsigned long)old_ebp >= old_esp;
 }
 
 static unsigned long walk_up(
