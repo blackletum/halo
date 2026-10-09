@@ -173,6 +173,9 @@ typedef byte boolean;
 
 typedef unsigned long tag;
 
+typedef boolean (*compare_function_2byte)(short, short);
+typedef boolean (*compare_function_4byte)(long, long);
+
 /* ---------- structures */
 
 struct system_unique_identifier
@@ -188,9 +191,11 @@ struct memory_status
 
 struct system_memory_information
 {
-	unsigned long free;
-	unsigned long total;
+	long free;
+	long total;
 };
+
+struct debug_symbol_table;
 
 struct location
 {
@@ -228,24 +233,6 @@ long csstrcasecmp(const char *s1, const char *s2);
 char *stristr(char const *haystack, char const *needle);
 unsigned long string_hash(char const *string);
 
-/* ---------- prototypes/CSERIES_WINDOWS.C */
-
-void display_debug_string(char const *string);
-void system_exit(long code);
-void system_unique_identifier_get(struct system_unique_identifier *identifier);
-boolean system_unique_identifiers_equal(struct system_unique_identifier const *identifier1, struct system_unique_identifier const *identifier2);
-unsigned long system_seconds(void);
-void system_get_user_name(char *name, short maximum_length);
-void *system_calloc(unsigned int num, unsigned int size);
-void *system_malloc(unsigned int size);
-void system_free(void *pointer);
-void *system_realloc(void *pointer, long size);
-unsigned int system_get_used_memory_size(void *pointer);
-void system_memory_information_get(struct system_memory_information *information);
-void system_show_wait_cursor(void);
-void system_alert(char const *string);
-void system_kill_screen_saver(void);
-
 /* ---------- prototypes/MAIN.C */
 
 void halt_and_catch_fire(void);
@@ -255,25 +242,31 @@ void halt_and_catch_fire(void);
 void debug_memory_manager_initialize(void);
 /*void debug_memory_manager_dispose(void);*/
 void check_memory_status(struct memory_status *status, char const *string);
-void debug_check_memory(char const *source_file, long source_line);
-void debug_dump_memory_for_file(char const *source_file_substring);
-void debug_dump_memory_by_file(void);
 void *debug_malloc(unsigned int size, boolean clear, char const *source_file, long source_line);
 void debug_free(void *pointer, char const *source_file, long source_line);
 void *debug_realloc(void *pointer, unsigned int size, char const *source_file, long source_line);
+void debug_check_memory(char const *source_file, long source_line);
+void debug_dump_memory_for_file(char const *source_file_substring);
+void debug_dump_memory_by_file(void);
 void debug_dump_memory(void);
+
+/* ---------- prototypes/SORT.C */
+
+void qsort_2byte(void *base, unsigned long num, compare_function_2byte compare);
+void qsort_4byte(void *base, unsigned long num, compare_function_4byte compare);
 
 /* ---------- prototypes/STACK_WALK_WINDOWS.C */
 
 void stack_walk_initialize(void);
 void stack_walk_dispose(void);
-void stack_walk_disregard_symbol_names(boolean disregard);
-void stack_walk_with_context(FILE *error_stream, short levels_to_ignore, struct _CONTEXT *context_pointer);
 long stack_walk_global_function_offset(void);
-char *symbol_name_from_address(unsigned long fake_address, struct debug_symbol_table *symbol_table);
-unsigned long base_address_from_symbol_name(char const *name, struct debug_symbol_table *symbol_table);
+void stack_walk_disregard_symbol_names(boolean disregard);
+void stack_walk(short levels_to_ignore);
+void stack_walk_with_context(FILE *error_stream, short levels_to_ignore, struct _CONTEXT *context_pointer);
 boolean load_symbol_table(char *filename, struct debug_symbol_table *symbol_table, char *timestamp_str);
 void free_symbol_table(struct debug_symbol_table *symbol_table);
+char *symbol_name_from_address(unsigned long fake_address, struct debug_symbol_table *symbol_table);
+unsigned long base_address_from_symbol_name(char const *name, struct debug_symbol_table *symbol_table);
 
 /* ---------- macros */
 

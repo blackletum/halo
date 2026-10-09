@@ -1,15 +1,5 @@
 /*
 SORT.C
-
-symbols in this file:
-00080360 0060:
-	_code_00080360 (0000)
-000803C0 0050:
-	_code_000803c0 (0000)
-00080410 0150:
-	_qsort_2byte (0000)
-00080560 0140:
-	_qsort_4byte (0000)
 */
 
 /* ---------- headers */
@@ -21,14 +11,12 @@ symbols in this file:
 enum
 {
 	CUTOFF = 8, /* from the CRT qsort.c */
+	STKSIZ = 30, /* from the CRT qsort.c */
 };
 
 /* ---------- macros */
 
 /* ---------- structures */
-
-typedef boolean (*compare_function_2byte)(short, short);
-typedef boolean (*compare_function_4byte)(long, long);
 
 /* ---------- prototypes */
 
@@ -44,11 +32,14 @@ void qsort_2byte(
 	unsigned long num,
 	compare_function_2byte compare)
 {
-	char *lo, *hi;
+	char *lo;
+	char *hi;
 	char *mid;
-	char *loguy, *higuy;
+	char *loguy;
+	char *higuy;
 	unsigned long size;
-	char *lostk[30], *histk[30];
+	char *lostk[STKSIZ];
+	char *histk[STKSIZ];
 	long stkptr;
 	short swap_space;
 
@@ -73,7 +64,9 @@ recurse:
 	else
 	{
 		mid = lo + (size / 2) * sizeof(short);
-		swap_space = *(short *)mid; *(short *)mid = *(short *)lo; *(short *)lo = swap_space;
+		swap_space = *(short *)mid;
+		*(short *)mid = *(short *)lo;
+		*(short *)lo = swap_space;
 
 		loguy = lo;
 		higuy = hi + sizeof(short);
@@ -95,10 +88,14 @@ recurse:
 				break;
 			}
 
-			swap_space = *(short *)loguy; *(short *)loguy = *(short *)higuy; *(short *)higuy = swap_space;
+			swap_space = *(short *)loguy;
+			*(short *)loguy = *(short *)higuy;
+			*(short *)higuy = swap_space;
 		}
 
-		swap_space = *(short *)lo; *(short *)lo = *(short *)higuy; *(short *)higuy = swap_space;
+		swap_space = *(short *)lo;
+		*(short *)lo = *(short *)higuy;
+		*(short *)higuy = swap_space;
 
 		if (higuy - 1 - lo >= hi - loguy)
 		{
@@ -149,11 +146,14 @@ void qsort_4byte(
 	unsigned long num,
 	compare_function_4byte compare)
 {
-	char *lo, *hi;
+	char *lo;
+	char *hi;
 	char *mid;
-	char *loguy, *higuy;
+	char *loguy;
+	char *higuy;
 	unsigned long size;
-	char *lostk[30], *histk[30];
+	char *lostk[STKSIZ];
+	char *histk[STKSIZ];
 	long stkptr;
 	long swap_space;
 
@@ -178,7 +178,9 @@ recurse:
 	else
 	{
 		mid = lo + (size / 2) * sizeof(long);
-		swap_space = *(long *)mid; *(long *)mid = *(long *)lo; *(long *)lo = swap_space;
+		swap_space = *(long *)mid;
+		*(long *)mid = *(long *)lo;
+		*(long *)lo = swap_space;
 
 		loguy = lo;
 		higuy = hi + sizeof(long);
@@ -200,10 +202,14 @@ recurse:
 				break;
 			}
 
-			swap_space = *(long *)loguy; *(long *)loguy = *(long *)higuy; *(long *)higuy = swap_space;
+			swap_space = *(long *)loguy;
+			*(long *)loguy = *(long *)higuy;
+			*(long *)higuy = swap_space;
 		}
 
-		swap_space = *(long *)lo; *(long *)lo = *(long *)higuy; *(long *)higuy = swap_space;
+		swap_space = *(long *)lo;
+		*(long *)lo = *(long *)higuy;
+		*(long *)higuy = swap_space;
 
 		if (higuy - 1 - lo >= hi - loguy)
 		{
@@ -256,7 +262,8 @@ static void shortsort_2byte(
 	char *hi,
 	compare_function_2byte compare)
 {
-	char *p, *max;
+	char *p;
+	char *max;
 	short swap_space;
 
 	while (hi > lo)
@@ -271,7 +278,9 @@ static void shortsort_2byte(
 			}
 		}
 
-		swap_space = *(short *)max; *(short *)max = *(short *)hi; *(short *)hi = swap_space;
+		swap_space = *(short *)max;
+		*(short *)max = *(short *)hi;
+		*(short *)hi = swap_space;
 		hi -= sizeof(short);
 	}
 
@@ -283,7 +292,8 @@ static void shortsort_4byte(
 	char *hi,
 	compare_function_4byte compare)
 {
-	char *p, *max;
+	char *p;
+	char *max;
 	long swap_space;
 
 	while (hi > lo)
@@ -298,7 +308,9 @@ static void shortsort_4byte(
 			}
 		}
 
-		swap_space = *(long *)max; *(long *)max = *(long *)hi; *(long *)hi = swap_space;
+		swap_space = *(long *)max;
+		*(long *)max = *(long *)hi;
+		*(long *)hi = swap_space;
 		hi -= sizeof(long);
 	}
 
