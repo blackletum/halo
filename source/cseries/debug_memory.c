@@ -183,7 +183,7 @@ static void check_pointer(
 	char const *source_file,
 	long source_line)
 {
-	struct pointer_header *header = (struct pointer_header *)pointer - 1;
+	struct pointer_header *header = &((struct pointer_header *)pointer)[-1];
 	struct pointer_trailer const *trailer = (struct pointer_trailer const *)((byte *)pointer + header->size);
 
 	match_vassert("c:\\halo\\SOURCE\\cseries\\debug_memory.c", 199, trailer->signature == POINTER_TRAILER_SIGNATURE,
@@ -250,7 +250,7 @@ void debug_free(
 	char const *source_file,
 	long source_line)
 {
-	struct pointer_header *header = (struct pointer_header *)pointer - 1;
+	struct pointer_header *header = &((struct pointer_header *)pointer)[-1];
 
 	check_debug_memory_globals(source_file, source_line);
 	check_header(header, source_file, source_line);
@@ -302,7 +302,7 @@ void *debug_realloc(
 
 	if (pointer)
 	{
-		struct pointer_header *pointer_header = (struct pointer_header *)pointer - 1;
+		struct pointer_header *pointer_header = &((struct pointer_header *)pointer)[-1];
 
 		check_header(pointer_header, source_file, source_line);
 		check_pointer(pointer, source_file, source_line);

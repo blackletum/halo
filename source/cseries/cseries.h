@@ -195,8 +195,6 @@ struct system_memory_information
 	long total;
 };
 
-struct debug_symbol_table;
-
 struct location
 {
 	long leaf_index;
