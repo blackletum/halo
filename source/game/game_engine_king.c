@@ -954,57 +954,63 @@ static boolean king_engine_initialize_for_new_map(
 static void king_engine_post_rasterize(
 	void)
 {
-	struct model_vertex_uncompressed render_points[4];
-	real_vector3d n;
+	long point_count;
+	real_point3d *points;
+	long index;
+	struct scenario *scenario;
+	struct game_globals *game_globals;
+	struct game_globals_multiplayer_information *multiplayer_information;
 	long shader_index;
 	real perimeter;
-	real texture_scale;
-	real inverse_perimeter;
+	real length;
 	real u0;
 	real u1;
-	long point_count;
-	long index;
-	struct game_globals *game_globals;
+	real inverse_perimeter;
+	real texture_scale;
 
-	global_scenario_get();
+	scenario = global_scenario_get();
 	game_globals = scenario_get_game_globals();
-	shader_index = TAG_BLOCK_GET_ELEMENT(&game_globals->multiplayer_information, 0, struct game_globals_multiplayer_information)->hill_shader.index;
+	multiplayer_information = TAG_BLOCK_GET_ELEMENT(&game_globals->multiplayer_information, 0, struct game_globals_multiplayer_information);
+	shader_index = multiplayer_information->hill_shader.index;
 	perimeter = 0.f;
 	point_count = king_globals.hill_point_count;
+	points = king_globals.hill_points;
 
 	for (index = 0; index < point_count; index++)
 	{
-		perimeter += distance3d(&king_globals.hill_points[index], &king_globals.hill_points[index + 1 == point_count ? 0 : index + 1]);
+		perimeter += distance3d(&points[index], &points[index + 1 == point_count ? 0 : index + 1]);
 	}
 
-	texture_scale = (real)(1.0 / floor(perimeter + 0.5f));
-	inverse_perimeter = 1.f / (texture_scale * perimeter);
+	texture_scale = 1.f / floor(perimeter + 0.5f);
+	inverse_perimeter = 1.f / (perimeter * texture_scale);
 	u0 = 0.f;
-	perimeter = 0.f;
+	length = 0.f;
 
 	for (index = 0; index < point_count; index++)
 	{
-		real_point3d *p0 = &king_globals.hill_points[index];
-		real_vector3d v1;
-		real_vector3d v2;
+		struct model_vertex_uncompressed render_points[4];
+		real distance;
+		real_vector3d v[2];
+		real_vector3d n;
 
-		perimeter += distance3d(p0, &king_globals.hill_points[index + 1 == point_count ? 0 : index + 1]);
-		u1 = inverse_perimeter * perimeter;
+		distance = distance3d(&points[index], &points[index + 1 == point_count ? 0 : index + 1]);
+		u1 = inverse_perimeter * (length + distance);
+		length += distance;
 		memset(render_points, 0, sizeof(render_points));
-		render_points[1].position = *p0;
+		render_points[1].position = points[index];
+		render_points[0].position = render_points[1].position;
+		render_points[3].position = points[index + 1 == point_count ? 0 : index + 1];
+		render_points[2].position = render_points[3].position;
 		render_points[1].position.z += 0.8f;
-		render_points[0].position = *p0;
-		render_points[3].position = king_globals.hill_points[index + 1 == point_count ? 0 : index + 1];
-		render_points[2].position = king_globals.hill_points[index + 1 == point_count ? 0 : index + 1];
 		render_points[2].position.z += 0.8f;
-		vector_from_points3d(&render_points[0].position, &render_points[1].position, &v1);
-		vector_from_points3d(&render_points[1].position, &render_points[2].position, &v2);
-		cross_product3d(&v1, &v2, &n);
+		vector_from_points3d(&render_points[0].position, &render_points[1].position, &v[0]);
+		vector_from_points3d(&render_points[1].position, &render_points[2].position, &v[1]);
+		cross_product3d(&v[0], &v[1], &n);
 		normalize3d(&n);
-		render_points[0].normal = n;
-		render_points[1].normal = n;
-		render_points[2].normal = n;
 		render_points[3].normal = n;
+		render_points[2].normal = render_points[3].normal;
+		render_points[1].normal = render_points[2].normal;
+		render_points[0].normal = render_points[1].normal;
 		render_points[0].texcoord.x = u0 * texture_scale;
 		render_points[0].texcoord.y = 1.f;
 		render_points[1].texcoord.x = u0 * texture_scale;

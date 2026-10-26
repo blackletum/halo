@@ -526,7 +526,8 @@ static void get_local_player_input_blob(
 
 				if (unit->object.parent_object_index != NONE && unit->unit.parent_seat_index != NONE)
 				{
-					struct unit_definition *definition = (struct unit_definition *)tag_get(UNIT_DEFINITION_TAG, ((struct object_datum *)object_get_and_verify_type(unit->object.parent_object_index, _object_mask_unit))->definition_index);
+					struct unit_datum *parent = (struct unit_datum *)object_get_and_verify_type(unit->object.parent_object_index, _object_mask_unit);
+					struct unit_definition *definition = (struct unit_definition *)tag_get(UNIT_DEFINITION_TAG, parent->definition_index);
 					struct unit_seat *seat = TAG_BLOCK_GET_ELEMENT(&definition->unit.seats, unit->unit.parent_seat_index, struct unit_seat);
 
 					if (seat->yaw_rate > 0.f)
@@ -571,19 +572,21 @@ static void get_local_player_input_blob(
 
 			if (player_control_camera_control_is_active())
 			{
-				real pitch_spin = (real)((state->buttons[_button_scope_zoom] && controls_enable_doubled_spin ? !controls_swap_doubled_spin_state : controls_swap_doubled_spin_state) + 1);
-				real yaw_spin = (real)((state->buttons[_button_scope_zoom] && controls_enable_doubled_spin ? !controls_swap_doubled_spin_state : controls_swap_doubled_spin_state) + 1);
 				real_euler_angles2d angular_velocity;
-				real_euler_angles2d target_angular_position;
-				real_euler_angles2d target_angular_velocity;
 
-				match_assert("c:\\halo\\SOURCE\\game\\player_control.c", 456, constants->look_function.count>1);
-				angular_velocity.yaw = evaluate_piecewise_linear_function((short)constants->look_function.count, (real *)constants->look_function.address, yaw) * yaw_spin * yaw_rate;
-				angular_velocity.pitch = evaluate_piecewise_linear_function((short)constants->look_function.count, (real *)constants->look_function.address, pitch) * pitch_spin * pitch_rate;
+				{
+					real pitch_spin = (real)((state->buttons[_button_scope_zoom] && controls_enable_doubled_spin ? !controls_swap_doubled_spin_state : controls_swap_doubled_spin_state) + 1);
+					real yaw_spin = (real)((state->buttons[_button_scope_zoom] && controls_enable_doubled_spin ? !controls_swap_doubled_spin_state : controls_swap_doubled_spin_state) + 1);
+
+					match_assert("c:\\halo\\SOURCE\\game\\player_control.c", 456, constants->look_function.count>1);
+					angular_velocity.yaw = evaluate_piecewise_linear_function((short)constants->look_function.count, (real *)constants->look_function.address, yaw) * yaw_spin * yaw_rate;
+					angular_velocity.pitch = evaluate_piecewise_linear_function((short)constants->look_function.count, (real *)constants->look_function.address, pitch) * pitch_spin * pitch_rate;
+				}
 
 				if (player->unit_index != NONE && player_control->desired_zoom_level != NONE)
 				{
-					real zoom_scale = 1.f / unit_get_zoom_magnification(player->unit_index, player_control->desired_zoom_level);
+					real magnification = unit_get_zoom_magnification(player->unit_index, player_control->desired_zoom_level);
+					real zoom_scale = 1.f / magnification;
 
 					angular_velocity.yaw *= zoom_scale;
 					angular_velocity.pitch *= zoom_scale;
@@ -602,9 +605,9 @@ static void get_local_player_input_blob(
 				match_assert("c:\\halo\\SOURCE\\game\\player_control.c", 483, constants->look_acceleration_time>0.0f);
 				if (fabs(yaw) >= constants->look_pegging_threshold)
 				{
-					real acceleration = PIN(player_control->look_acceleration_time / constants->look_acceleration_time, 0.f, 1.f);
+					real acceleration = player_control->look_acceleration_time / constants->look_acceleration_time;
 
-					angular_velocity.yaw *= (constants->look_acceleration_scale - 1.f) * acceleration + 1.f;
+					angular_velocity.yaw *= (constants->look_acceleration_scale - 1.f) * PIN(acceleration, 0.f, 1.f) + 1.f;
 					player_control->look_acceleration_time += seconds_elapsed;
 				}
 				else
@@ -612,25 +615,30 @@ static void get_local_player_input_blob(
 					player_control->look_acceleration_time = 0.f;
 				}
 
-				player_control->target_object_index = local_player_aim_assist(local_player_index, &player_control->autoaim_level, &player_control->magnetism_level, &target_angular_position, &target_angular_velocity);
-				if (player_magnetism_flag && player_control->magnetism_level > 0.f &&
-					(fabs(yaw) > 0.0001f || fabs(pitch) > 0.0001f || fabs(input->throttle.i) > 0.0001f || fabs(input->throttle.j) > 0.0001f))
 				{
-					real game_speed = game_time_get_speed();
-					real friction = 1.f - PIN(constants->magnetism_friction, 0.f, 1.f) * player_control->magnetism_level;
-					real adhesion = PIN(constants->magnetism_adhesion, 0.f, 1.f) * player_control->magnetism_level;
+					real_euler_angles2d target_angular_position;
+					real_euler_angles2d target_angular_velocity;
 
-					if (game_players_are_double_speed())
+					player_control->target_object_index = local_player_aim_assist(local_player_index, &player_control->autoaim_level, &player_control->magnetism_level, &target_angular_position, &target_angular_velocity);
+					if (player_magnetism_flag && player_control->magnetism_level > 0.f &&
+						(fabs(yaw) > 0.0001f || fabs(pitch) > 0.0001f || fabs(input->throttle.i) > 0.0001f || fabs(input->throttle.j) > 0.0001f))
 					{
-						game_speed *= 0.5f;
-					}
+						real game_speed = game_time_get_speed();
+						real friction = 1.f - player_control->magnetism_level * PIN(constants->magnetism_friction, 0.f, 1.f);
+						real adhesion = player_control->magnetism_level * PIN(constants->magnetism_adhesion, 0.f, 1.f);
 
-					target_angular_velocity.yaw *= game_speed;
-					target_angular_velocity.pitch *= game_speed;
-					target_angular_velocity.yaw = PIN(target_angular_velocity.yaw, -_pi / 30.f, _pi / 30.f);
-					target_angular_velocity.pitch = PIN(target_angular_velocity.pitch, -_pi / 60.f, _pi / 60.f);
-					angular_velocity.yaw = target_angular_velocity.yaw * adhesion + friction * angular_velocity.yaw;
-					angular_velocity.pitch = target_angular_velocity.pitch * adhesion + friction * angular_velocity.pitch;
+						if (game_players_are_double_speed())
+						{
+							game_speed *= 0.5f;
+						}
+
+						target_angular_velocity.yaw *= game_speed;
+						target_angular_velocity.pitch *= game_speed;
+						target_angular_velocity.yaw = PIN(target_angular_velocity.yaw, -_pi / 30.f, _pi / 30.f);
+						target_angular_velocity.pitch = PIN(target_angular_velocity.pitch, -_pi / 60.f, _pi / 60.f);
+						angular_velocity.yaw = friction * angular_velocity.yaw + adhesion * target_angular_velocity.yaw;
+						angular_velocity.pitch = friction * angular_velocity.pitch + adhesion * target_angular_velocity.pitch;
+					}
 				}
 
 				input->facing_delta.yaw = angular_velocity.yaw * (seconds_elapsed * 30.f);
@@ -647,15 +655,17 @@ static void get_local_player_input_blob(
 				word reset_buttons;
 				long button_index;
 
-				reset_buttons = player_control->reset_button_when_released_bit_vector & player_control->inhibited_button_bit_vector;
+				reset_buttons = player_control->inhibited_button_bit_vector & player_control->reset_button_when_released_bit_vector;
 				if (reset_buttons)
 				{
+					long button_index;
+
 					for (button_index = 0; button_index < NUMBER_OF_ACTION_CONTROL_BUTTONS; button_index++)
 					{
 						if (TEST_FLAG(reset_buttons, button_index) && !state->buttons[button_index])
 						{
-							player_control->inhibited_button_bit_vector &= ~FLAG(button_index);
-							player_control->reset_button_when_released_bit_vector &= ~FLAG(button_index);
+							SET_FLAG(player_control->inhibited_button_bit_vector, button_index, FALSE);
+							SET_FLAG(player_control->reset_button_when_released_bit_vector, button_index, FALSE);
 						}
 					}
 				}
@@ -1347,7 +1357,6 @@ static void handle_one_player_input(
 	struct player_control *player = player_control_get(local_player_index);
 	struct game_globals_player_control *constants = TAG_BLOCK_GET_ELEMENT(&scenario_get_game_globals()->player_control, 0, struct game_globals_player_control);
 	struct input_blob input;
-	struct player_action action;
 	long weapon_index;
 
 	memset(&input, 0xFA, sizeof(input));
@@ -1454,6 +1463,8 @@ static void handle_one_player_input(
 
 	if (local_player_get_player_index(local_player_index) != NONE)
 	{
+		struct player_action action;
+
 		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 861, player->desired_angles.pitch);
 		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 862, player->desired_angles.yaw);
 		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 863, player->primary_trigger);
