@@ -86,23 +86,19 @@ __inline real compute_attenuation(
 	real variable,
 	real maximum)
 {
-	real minimum = maximum * 0.5f;
-	real attenuation;
+	real minimum = 0.5f * maximum;
 
 	if (variable >= maximum)
 	{
-		attenuation = 0.f;
-	}
-	else if (variable <= minimum)
-	{
-		attenuation = 1.f;
-	}
-	else
-	{
-		attenuation = (maximum - variable) / (maximum - minimum);
+		return 0.f;
 	}
 
-	return attenuation;
+	if (variable <= minimum)
+	{
+		return 1.f;
+	}
+
+	return (maximum - variable) / (maximum - minimum);
 }
 
 __inline real compute_composite_attenuation(
@@ -364,8 +360,11 @@ boolean aim_assist_clear_line_of_sight(
 
 	match_collision_log_begin_user("c:\\halo\\SOURCE\\game\\aim_assist.c", 350, _collision_user_aim_assist);
 
-	if (!collision_test_line(_collision_test_for_line_of_sight_flags, p0, p1, object_get_ultimate_parent(ignore_object_index), &collision) ||
-		(collision.type == _collision_result_object && object_get_ultimate_parent(collision.object_index) == object_get_ultimate_parent(target_object_index)))
+	if (!collision_test_line(_collision_test_for_line_of_sight_flags, p0, p1, object_get_ultimate_parent(ignore_object_index), &collision))
+	{
+		clear = TRUE;
+	}
+	else if (collision.type == _collision_result_object && object_get_ultimate_parent(collision.object_index) == object_get_ultimate_parent(target_object_index))
 	{
 		clear = TRUE;
 	}
@@ -384,8 +383,7 @@ static boolean unit_get_aim_assist_parameters(
 {
 	if (unit_index != NONE)
 	{
-		struct unit_datum *unit = (struct unit_datum *)object_get_and_verify_type(unit_index, _object_mask_unit);
-		long weapon_index = unit_inventory_get_weapon(unit_index, unit->unit.current_weapon_index);
+		long weapon_index = unit_inventory_get_weapon(unit_index, unit_get(unit_index)->unit.current_weapon_index);
 
 		if (weapon_index != NONE)
 		{

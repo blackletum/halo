@@ -3732,12 +3732,12 @@ long weapon_definition_index_to_list_index(
 {
 	long list_index;
 	struct game_globals *game_globals = scenario_get_game_globals();
-	struct tag_reference *weapons = game_globals->weapon_list.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->weapon_list, 0, struct tag_reference) : NULL;
+	struct game_globals_tag_reference *weapons = game_globals->weapon_list.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->weapon_list, 0, struct game_globals_tag_reference) : NULL;
 	long result = NONE;
 
 	for (list_index = 0; list_index < game_globals->weapon_list.count; list_index++)
 	{
-		if (definition_index == weapons[list_index].index)
+		if (definition_index == weapons[list_index].reference.index)
 		{
 			result = list_index;
 			break;

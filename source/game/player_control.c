@@ -324,7 +324,7 @@ boolean player_magnetism_flag = TRUE;
 boolean controls_swapped = TRUE;
 real player_look_zoomed_scale = 0.5f;
 
-static struct profile_section player_control_update_section = {"player_control_update", NONE, TRUE};
+static struct profile_section player_control_update_section = {"player_control_update", NONE, TRUE}; /* fake name */
 
 real const MOUSE_YAW_SCALE = 0.0031415927f;
 real const MOUSE_PITCH_SCALE = 0.0031415927f;

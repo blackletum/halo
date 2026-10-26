@@ -228,7 +228,9 @@ static void slayer_engine_dispose_from_old_map(
 static void slayer_engine_player_added(
 	long player_index)
 {
-	player_get(player_index)->multiplayer.special = NONE;
+	struct player_datum *player = player_get(player_index);
+
+	player->multiplayer.special = NONE;
 
 	return;
 }
@@ -306,33 +308,39 @@ void update_speed_for_score(
 	long dead_player_index,
 	long killing_player_index)
 {
+	real kill_penalty = 0.02f;
+	real fast_kill_penalty = 0.15f;
+	real minimum_speed = 0.9f;
+	real death_bonus = 0.1f;
+	real slow_death_bonus = 0.1f;
+	real maximum_speed = 1.5f;
 	struct player_datum *killing_player = player_get(killing_player_index);
 	struct player_datum *dead_player = player_get(dead_player_index);
 
 	if (!game_engine_get_variant()->game_engine_variant.slayer.no_kill_penalty)
 	{
-		killing_player->multiplayer.speed_multiplier -= 0.02f;
+		killing_player->multiplayer.speed_multiplier -= kill_penalty;
 
 		if (killing_player->multiplayer.speed_multiplier >= 1.f)
 		{
-			killing_player->multiplayer.speed_multiplier -= 0.15f;
+			killing_player->multiplayer.speed_multiplier -= fast_kill_penalty;
 			killing_player->multiplayer.speed_multiplier = MAX(killing_player->multiplayer.speed_multiplier, 1.f);
 		}
 
-		killing_player->multiplayer.speed_multiplier = MAX(killing_player->multiplayer.speed_multiplier, 0.9f);
+		killing_player->multiplayer.speed_multiplier = MAX(killing_player->multiplayer.speed_multiplier, minimum_speed);
 	}
 
 	if (!game_engine_get_variant()->game_engine_variant.slayer.no_death_bonus)
 	{
-		dead_player->multiplayer.speed_multiplier += 0.1f;
+		dead_player->multiplayer.speed_multiplier += death_bonus;
 
 		if (dead_player->multiplayer.speed_multiplier <= 1.f)
 		{
-			dead_player->multiplayer.speed_multiplier += 0.1f;
+			dead_player->multiplayer.speed_multiplier += slow_death_bonus;
 			dead_player->multiplayer.speed_multiplier = MIN(dead_player->multiplayer.speed_multiplier, 1.f);
 		}
 
-		dead_player->multiplayer.speed_multiplier = MIN(dead_player->multiplayer.speed_multiplier, 1.5f);
+		dead_player->multiplayer.speed_multiplier = MIN(dead_player->multiplayer.speed_multiplier, maximum_speed);
 	}
 
 	return;
@@ -342,7 +350,9 @@ static void slayer_engine_adjust_score(
 	long player_index,
 	long adjustment)
 {
-	slayer_globals.team_score[player_get(player_index)->team_index] += adjustment;
+	struct player_datum *player = player_get(player_index);
+
+	slayer_globals.team_score[player->team_index] += adjustment;
 	slayer_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)] += adjustment;
 
 	return;
@@ -359,13 +369,18 @@ static long slayer_get_score(
 	enum get_score_type get_score_type)
 {
 	struct player_datum *player = player_get(player_index);
+	long score;
 
 	if (get_score_type == _get_score_team)
 	{
-		return slayer_globals.team_score[player->team_index];
+		score = slayer_globals.team_score[player->team_index];
+	}
+	else
+	{
+		score = slayer_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)];
 	}
 
-	return slayer_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)];
+	return score;
 }
 
 static boolean slayer_test_flag(
@@ -415,15 +430,16 @@ static word *slayer_get_team_score_string(
 static void find_next_target(
 	long my_index)
 {
-	struct data_iterator player_iterator;
 	struct player_datum *player = player_get(my_index);
 	long old_target_index = player->multiplayer.special;
 	long next_target = NONE;
+	struct data_iterator player_iterator;
+	struct player_datum *other_player;
 	long valid_target_count = 0;
 
 	data_iterator_new(&player_iterator, player_data);
 
-	while (data_iterator_next(&player_iterator))
+	while (other_player = (struct player_datum *)data_iterator_next(&player_iterator))
 	{
 		if (target_is_valid(my_index, old_target_index, player_iterator.index))
 		{
@@ -436,7 +452,7 @@ static void find_next_target(
 		valid_target_count = random_range(0, (short)valid_target_count);
 		data_iterator_new(&player_iterator, player_data);
 
-		while (data_iterator_next(&player_iterator))
+		while (other_player = (struct player_datum *)data_iterator_next(&player_iterator))
 		{
 			if (target_is_valid(my_index, old_target_index, player_iterator.index))
 			{
@@ -455,9 +471,9 @@ static void find_next_target(
 
 	player->multiplayer.special = next_target;
 
-	if (next_target != NONE)
+	if (player->multiplayer.special != NONE)
 	{
-		game_show_score_extended(my_index, slayer_message_new_target, next_target);
+		game_show_score_extended(my_index, slayer_message_new_target, player->multiplayer.special);
 	}
 
 	return;
@@ -469,7 +485,14 @@ static void slayer_engine_player_killed_player(
 	long dead_player_index,
 	boolean friendly_fire)
 {
-	if (!player_get(dead_player_index)->quit_out_of_game && killing_player_index != NONE)
+	struct player_datum *dead_player = player_get(dead_player_index);
+
+	if (dead_player->quit_out_of_game)
+	{
+		return;
+	}
+
+	if (killing_player_index != NONE)
 	{
 		struct player_datum *killing_player = player_get(killing_player_index);
 
@@ -592,13 +615,14 @@ static void slayer_player_update(
 
 		if (player->multiplayer.special != NONE)
 		{
-			long target_unit_index = player_get(player->multiplayer.special)->unit_index;
+			struct player_datum *target_player = player_get(player->multiplayer.special);
 
-			if (target_unit_index != NONE)
+			if (target_player->unit_index != NONE)
 			{
-				struct unit_datum *target_unit = unit_get(target_unit_index);
+				struct unit_datum *target_unit = unit_get(target_player->unit_index);
+				real vertical_offset = 0.f;
 
-				game_engine_set_goal_position(index, &target_unit->object.bounding_sphere_center, 0.f, "target_blue", player_index, NONE, NONE);
+				game_engine_set_goal_position(index, &target_unit->object.bounding_sphere_center, vertical_offset, "target_blue", player_index, NONE, NONE);
 			}
 		}
 

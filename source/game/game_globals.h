@@ -161,6 +161,11 @@ enum
 
 /* ---------- structures */
 
+struct game_globals_tag_reference
+{
+	struct tag_reference reference;
+};
+
 struct breakable_surface
 {
 	real maximum_vitality; 
@@ -371,9 +376,9 @@ __inline long game_globals_get_weapon(
 	struct game_globals *game_globals,
 	long index)
 {
-	struct tag_reference *weapon = TAG_BLOCK_GET_ELEMENT(&game_globals->weapon_list, index, struct tag_reference);
+	struct game_globals_tag_reference *weapon = TAG_BLOCK_GET_ELEMENT(&game_globals->weapon_list, index, struct game_globals_tag_reference);
 
-	return weapon->index;
+	return weapon->reference.index;
 }
 
 #endif // __GAME_GLOBALS_H

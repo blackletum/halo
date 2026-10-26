@@ -84,7 +84,7 @@ enum
 /* ---------- prototypes */
 
 static long cheat_player_index(void);
-static void cheat_objects(struct tag_reference const *references, short name_count);
+static void cheat_objects(struct game_globals_tag_reference const *references, short name_count);
 
 /* ---------- globals */
 
@@ -282,27 +282,27 @@ void cheat_all_weapons(
 	void)
 {
 	struct game_globals *game_globals = scenario_get_game_globals();
-	struct tag_reference *weapons = game_globals->weapon_list.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->weapon_list, 0, struct tag_reference) : NULL;
+	struct game_globals_tag_reference *weapons = game_globals->weapon_list.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->weapon_list, 0, struct game_globals_tag_reference) : NULL;
 
 	if (weapons)
 	{
-		cheat_objects(game_globals->weapon_list.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->weapon_list, 0, struct tag_reference) : NULL, (short)game_globals->weapon_list.count);
+		cheat_objects(game_globals->weapon_list.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->weapon_list, 0, struct game_globals_tag_reference) : NULL, (short)game_globals->weapon_list.count);
 	}
 	else
 	{
 		long tag_index = NONE;
 		short reference_count = 0;
-		struct tag_reference references[MAXIMUM_CHEAT_REFERENCES];
+		struct game_globals_tag_reference weapon_references[MAXIMUM_CHEAT_REFERENCES];
 		struct tag_iterator iterator;
 
 		tag_iterator_new(&iterator, WEAPON_DEFINITION_TAG);
 
-		while ((tag_index = tag_iterator_next(&iterator)) != NONE && reference_count < NUMBEROF(references))
+		while ((tag_index = tag_iterator_next(&iterator)) != NONE && reference_count < NUMBEROF(weapon_references))
 		{
-			references[reference_count++].index = tag_index;
+			weapon_references[reference_count++].reference.index = tag_index;
 		}
 
-		cheat_objects(references, reference_count);
+		cheat_objects(weapon_references, reference_count);
 	}
 
 	return;
@@ -313,7 +313,7 @@ void cheat_all_powerups(
 {
 	struct game_globals *game_globals = scenario_get_game_globals();
 
-	cheat_objects(game_globals->cheat_powerups.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->cheat_powerups, 0, struct tag_reference) : NULL, (short)game_globals->cheat_powerups.count);
+	cheat_objects(game_globals->cheat_powerups.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->cheat_powerups, 0, struct game_globals_tag_reference) : NULL, (short)game_globals->cheat_powerups.count);
 
 	return;
 }
@@ -355,7 +355,7 @@ static long cheat_player_index(
 }
 
 static void cheat_objects(
-	struct tag_reference const *references,
+	struct game_globals_tag_reference const *references,
 	short name_count)
 {
 	long player_index = cheat_player_index();
@@ -374,12 +374,12 @@ static void cheat_objects(
 
 		for (name_index = 0; name_index < name_count; name_index++)
 		{
-			if (references[name_index].index != NONE)
+			if (references[name_index].reference.index != NONE)
 			{
 				struct object_placement_data data;
 				real angle = arctangent(forward.i, forward.j) + (name_index - name_count / 2) * MIN(2.f * _pi / name_count, _pi / 8.f);
 
-				object_placement_data_new(&data, references[name_index].index, NONE);
+				object_placement_data_new(&data, references[name_index].reference.index, NONE);
 				data.position.x = origin.x + cosine(angle) * 1.5f;
 				data.position.y = origin.y + sine(angle) * 1.5f;
 				data.position.z = origin.z + 0.8f;

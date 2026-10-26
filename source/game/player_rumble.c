@@ -49,7 +49,7 @@ symbols in this file:
 
 enum
 {
-	MAXIMUM_NUMBER_OF_vibrate_EFFECTS = 8
+	MAXIMUM_NUMBER_OF_RUMBLE_EFFECTS = 8 /* fake name */
 };
 
 /* ---------- macros */
@@ -60,8 +60,8 @@ enum
 
 struct player_rumble_datum
 {
-	struct vibrate_definition impulse[MAXIMUM_NUMBER_OF_vibrate_EFFECTS];
-	real time_elapsed[MAXIMUM_NUMBER_OF_vibrate_EFFECTS];
+	struct rumble_definition impulse[MAXIMUM_NUMBER_OF_RUMBLE_EFFECTS];
+	real time_elapsed[MAXIMUM_NUMBER_OF_RUMBLE_EFFECTS];
 	real left_frequency_continuous;
 	real right_frequency_continuous;
 };
@@ -77,12 +77,6 @@ struct rumble_global_data
 {
 	struct player_rumble_datum player_rumble_data[MAXIMUM_NUMBER_OF_LOCAL_PLAYERS];
 	struct scripted_rumble_datum scripted_rumble;
-};
-
-struct rumble_data
-{
-	word left_frequency;
-	word right_frequency;
 };
 
 /* ---------- prototypes */
@@ -137,19 +131,19 @@ void rumble_player_set_scale(
 
 void rumble_player_impulse(
 	short local_player_index,
-	struct vibrate_definition const *rumble_definition,
+	struct rumble_definition const *rumble_definition,
 	real scale,
 	real time_scale)
 {
 	struct player_rumble_datum *rumble_datum = &rumble_globals->player_rumble_data[local_player_index];
 	real largest_timestamp = rumble_datum->time_elapsed[0];
-	struct vibrate_definition *replaced_impulse = &rumble_datum->impulse[0];
+	struct rumble_definition *replaced_impulse = &rumble_datum->impulse[0];
 	long impulse_index;
 	real frequency_scale;
 
 	match_assert("c:\\halo\\SOURCE\\game\\player_rumble.c", 164, rumble_definition);
 
-	for (impulse_index = 1; impulse_index < MAXIMUM_NUMBER_OF_vibrate_EFFECTS; impulse_index++)
+	for (impulse_index = 1; impulse_index < MAXIMUM_NUMBER_OF_RUMBLE_EFFECTS; impulse_index++)
 	{
 		if (rumble_datum->time_elapsed[impulse_index] > largest_timestamp)
 		{
@@ -160,10 +154,10 @@ void rumble_player_impulse(
 
 	*replaced_impulse = *rumble_definition;
 	frequency_scale = (1.f - rumble_definition->zero_scale_factor) * scale + rumble_definition->zero_scale_factor;
-	replaced_impulse->vibrate_frequencies[_vibrate_frequency_left].frequency *= frequency_scale;
-	replaced_impulse->vibrate_frequencies[_vibrate_frequency_right].frequency *= frequency_scale;
-	replaced_impulse->vibrate_frequencies[_vibrate_frequency_left].duration *= time_scale;
-	replaced_impulse->vibrate_frequencies[_vibrate_frequency_right].duration *= time_scale;
+	replaced_impulse->rumble_frequencies[_rumble_frequency_left].frequency *= frequency_scale;
+	replaced_impulse->rumble_frequencies[_rumble_frequency_right].frequency *= frequency_scale;
+	replaced_impulse->rumble_frequencies[_rumble_frequency_left].duration *= time_scale;
+	replaced_impulse->rumble_frequencies[_rumble_frequency_right].duration *= time_scale;
 	rumble_datum->time_elapsed[replaced_impulse - rumble_datum->impulse] = 0.f;
 
 	return;
@@ -235,7 +229,7 @@ void rumble_update(
 		long player_index;
 		long impulse_index;
 
-		for (impulse_index = 0; impulse_index < MAXIMUM_NUMBER_OF_vibrate_EFFECTS; impulse_index++)
+		for (impulse_index = 0; impulse_index < MAXIMUM_NUMBER_OF_RUMBLE_EFFECTS; impulse_index++)
 		{
 			rumble_datum->time_elapsed[impulse_index] += SECONDS_PER_TICK;
 		}
@@ -273,20 +267,20 @@ static struct rumble_data rumble_calculate(
 	struct player_rumble_datum *datum)
 {
 	struct rumble_data result;
-	real magnitudes[NUMBER_OF_vibrate_FREQUENCIES];
+	real magnitudes[NUMBER_OF_RUMBLE_FREQUENCIES];
 	short impulse_index;
 
-	magnitudes[_vibrate_frequency_left] = datum->left_frequency_continuous;
-	magnitudes[_vibrate_frequency_right] = datum->right_frequency_continuous;
+	magnitudes[_rumble_frequency_left] = datum->left_frequency_continuous;
+	magnitudes[_rumble_frequency_right] = datum->right_frequency_continuous;
 
-	for (impulse_index = 0; impulse_index < MAXIMUM_NUMBER_OF_vibrate_EFFECTS; impulse_index++)
+	for (impulse_index = 0; impulse_index < MAXIMUM_NUMBER_OF_RUMBLE_EFFECTS; impulse_index++)
 	{
 		real time_elapsed = datum->time_elapsed[impulse_index];
 		long frequency_index;
 
-		for (frequency_index = 0; frequency_index < NUMBER_OF_vibrate_FREQUENCIES; frequency_index++)
+		for (frequency_index = 0; frequency_index < NUMBER_OF_RUMBLE_FREQUENCIES; frequency_index++)
 		{
-			struct vibrate_frequency_definition *frequency = &datum->impulse[impulse_index].vibrate_frequencies[frequency_index];
+			struct rumble_frequency_definition *frequency = &datum->impulse[impulse_index].rumble_frequencies[frequency_index];
 
 			if (frequency->duration > time_elapsed)
 			{
@@ -297,12 +291,12 @@ static struct rumble_data rumble_calculate(
 
 	if (rumble_globals->scripted_rumble.scale != 0.f)
 	{
-		magnitudes[_vibrate_frequency_left] += rumble_globals->scripted_rumble.left_frequency * rumble_globals->scripted_rumble.scale;
-		magnitudes[_vibrate_frequency_right] += rumble_globals->scripted_rumble.right_frequency * rumble_globals->scripted_rumble.scale;
+		magnitudes[_rumble_frequency_left] += rumble_globals->scripted_rumble.left_frequency * rumble_globals->scripted_rumble.scale;
+		magnitudes[_rumble_frequency_right] += rumble_globals->scripted_rumble.right_frequency * rumble_globals->scripted_rumble.scale;
 	}
 
-	result.left_frequency = (word)fast_ftol(PIN(magnitudes[_vibrate_frequency_left] * 65535.f, 0.f, 65535.f));
-	result.right_frequency = (word)fast_ftol(PIN(magnitudes[_vibrate_frequency_right] * 65535.f, 0.f, 65535.f));
+	result.left_frequency = (word)fast_ftol(PIN(magnitudes[_rumble_frequency_left] * 65535.f, 0.f, 65535.f));
+	result.right_frequency = (word)fast_ftol(PIN(magnitudes[_rumble_frequency_right] * 65535.f, 0.f, 65535.f));
 
 	return result;
 }

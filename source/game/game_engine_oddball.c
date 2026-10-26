@@ -261,7 +261,7 @@ static void oddball_engine_dispose_from_old_map(
 static void oddball_engine_player_added(
 	long player_index)
 {
-	player_get(player_index);
+	struct player_datum *player = player_get(player_index);
 
 	return;
 }
@@ -422,7 +422,12 @@ boolean ball_available(
 
 	for (ball_index = 0; ball_index < ball_count; ball_index++)
 	{
-		if (oddball_globals.ball_spawn_timer[ball_index] == 0 && oddball_globals.current_ball_owner[ball_index] == NONE)
+		if (oddball_globals.ball_spawn_timer[ball_index] != 0)
+		{
+			continue;
+		}
+
+		if (oddball_globals.current_ball_owner[ball_index] == NONE)
 		{
 			result = TRUE;
 			break;
@@ -529,51 +534,74 @@ static long oddball_get_score(
 	long player_index,
 	enum get_score_type get_score_type)
 {
+	long score;
 	struct player_datum *player = player_get(player_index);
 
 	if (get_score_type == _get_score_team)
 	{
-		return oddball_globals.team_score[player->team_index];
+		score = oddball_globals.team_score[player->team_index];
+	}
+	else
+	{
+		score = oddball_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)];
 	}
 
-	return oddball_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)];
+	return score;
 }
 
 static boolean oddball_ball_transfer_by_killing(
 	void)
 {
+	boolean result;
+
 	switch (game_engine_get_variant()->game_engine_variant.oddball.oddball_ball_type)
 	{
 	case _oddball_magic:
 	case _oddball_terminator:
-		return TRUE;
+		result = TRUE;
+		break;
+	default:
+		result = FALSE;
+		break;
 	}
 
-	return FALSE;
+	return result;
 }
 
 static boolean accumulate_score_by_time(
 	void)
 {
+	boolean result;
+
 	switch (game_engine_get_variant()->game_engine_variant.oddball.oddball_ball_type)
 	{
 	case _oddball_terminator:
-		return FALSE;
+		result = FALSE;
+		break;
+	default:
+		result = TRUE;
+		break;
 	}
 
-	return TRUE;
+	return result;
 }
 
 static boolean terminator_scoring_rules(
 	void)
 {
+	boolean result;
+
 	switch (game_engine_get_variant()->game_engine_variant.oddball.oddball_ball_type)
 	{
 	case _oddball_terminator:
-		return TRUE;
+		result = TRUE;
+		break;
+	default:
+		result = FALSE;
+		break;
 	}
 
-	return FALSE;
+	return result;
 }
 
 static boolean oddball_test_flag(
@@ -688,7 +716,9 @@ static real_point3d find_position_for_ball(
 
 		for (index = 0; index < scenario->netgame_flags.count; index++)
 		{
-			if (TAG_BLOCK_GET_ELEMENT(&scenario->netgame_flags, index, struct scenario_netgame_flag)->type == _netgame_flag_oddball_ball_spawn)
+			struct scenario_netgame_flag *flag = TAG_BLOCK_GET_ELEMENT(&scenario->netgame_flags, index, struct scenario_netgame_flag);
+
+			if (flag->type == _netgame_flag_oddball_ball_spawn)
 			{
 				spawn_count++;
 			}
@@ -701,19 +731,21 @@ static real_point3d find_position_for_ball(
 		}
 		else
 		{
-			long spawn_index = random_range(0, (short)spawn_count);
+			spawn_count = random_range(0, (short)spawn_count);
 
 			for (index = 0; index < scenario->netgame_flags.count; index++)
 			{
-				if (TAG_BLOCK_GET_ELEMENT(&scenario->netgame_flags, index, struct scenario_netgame_flag)->type == _netgame_flag_oddball_ball_spawn)
+				struct scenario_netgame_flag *flag = TAG_BLOCK_GET_ELEMENT(&scenario->netgame_flags, index, struct scenario_netgame_flag);
+
+				if (flag->type == _netgame_flag_oddball_ball_spawn)
 				{
-					if (spawn_index == 0)
+					if (spawn_count == 0)
 					{
 						flag_index = index;
 						break;
 					}
 
-					spawn_index--;
+					spawn_count--;
 				}
 			}
 		}
@@ -732,7 +764,9 @@ static void create_the_ball(
 {
 	if (!oddball_ball_transfer_by_killing())
 	{
+		struct object_placement_data placement_data;
 		long definition_index = get_ball_definition_index();
+		long object_index = NONE;
 
 		if (definition_index == NONE)
 		{
@@ -740,9 +774,6 @@ static void create_the_ball(
 		}
 		else
 		{
-			struct object_placement_data placement_data;
-			long object_index;
-
 			object_placement_data_new(&placement_data, definition_index, NONE);
 			placement_data.position = find_position_for_ball(ball_index);
 			object_index = object_new(&placement_data);
@@ -757,13 +788,13 @@ static void create_the_ball(
 static boolean oddball_engine_initialize_for_new_map(
 	void)
 {
-	long ball_index;
+	struct scenario *scenario = global_scenario_get();
+	long index;
 
-	global_scenario_get();
 	memset(&oddball_globals, 0, sizeof(oddball_globals));
 	oddball_globals.score_to_win = game_engine_get_variant()->universal_variant.score_to_win;
 
-	if (!terminator_scoring_rules())
+	if (accumulate_score_by_time())
 	{
 		oddball_globals.score_to_win *= TICKS_PER_MINUTE;
 	}
@@ -778,24 +809,27 @@ static boolean oddball_engine_initialize_for_new_map(
 		error(_error_silent, "### failed to find ball spawn team id 1");
 	}
 
-	for (ball_index = 0; ball_index < MULTIPLAYER_MAXIMUM_PLAYERS; ball_index++)
+	for (index = 0; index < MULTIPLAYER_MAXIMUM_PLAYERS; index++)
 	{
-		oddball_globals.current_ball_owner[ball_index] = NONE;
+		oddball_globals.current_ball_owner[index] = NONE;
 	}
 
 	if (!oddball_ball_transfer_by_killing())
 	{
+		long ball_index;
 		long ball_count = game_engine_get_variant()->game_engine_variant.oddball.ball_spawn_count;
 		long spawn_timer = 0;
+		long spawn_delay = 15 * TICKS_PER_SECOND;
 
 		for (ball_index = 0; ball_index < ball_count; ball_index++)
 		{
-			spawn_timer += 15 * TICKS_PER_SECOND;
+			spawn_timer += spawn_delay;
 			oddball_globals.ball_spawn_timer[ball_index] = spawn_timer;
 		}
 	}
 	else
 	{
+		long ball_index;
 		long ball_count = game_engine_get_variant()->game_engine_variant.oddball.ball_spawn_count;
 
 		for (ball_index = 0; ball_index < ball_count; ball_index++)
@@ -833,6 +867,7 @@ static void update_ball_ownership(
 	if (!oddball_ball_transfer_by_killing())
 	{
 		long ball_index;
+		long unit_index;
 
 		for (ball_index = 0; ball_index < MULTIPLAYER_MAXIMUM_PLAYERS; ball_index++)
 		{
@@ -842,9 +877,10 @@ static void update_ball_ownership(
 			}
 		}
 
-		if (player->unit_index != NONE)
+		unit_index = player->unit_index;
+		if (unit_index != NONE)
 		{
-			struct unit_datum *unit = unit_get(player->unit_index);
+			struct unit_datum *unit = unit_get(unit_index);
 
 			if (unit->unit.current_weapon_index != NONE)
 			{
@@ -852,7 +888,9 @@ static void update_ball_ownership(
 
 				if (weapon_index != NONE && weapon_is_flag(weapon_index))
 				{
-					oddball_globals.current_ball_owner[weapon_get(weapon_index)->object.owner_team_index] = player_index;
+					struct weapon_datum *weapon = weapon_get(weapon_index);
+
+					oddball_globals.current_ball_owner[weapon->object.owner_team_index] = player_index;
 				}
 			}
 		}
@@ -872,13 +910,13 @@ static void oddball_engine_player_update(
 	ball_count = player_ball_count(player_index);
 	player->multiplayer.speed_multiplier = 1.f;
 
+	if (ball_count > 0 && game_engine_get_variant()->game_engine_variant.oddball.trait_with_ball != _game_trait_invisible)
+	{
+		game_engine_player_depower_active_camo(player_index);
+	}
+
 	if (ball_count > 0)
 	{
-		if (game_engine_get_variant()->game_engine_variant.oddball.trait_with_ball != _game_trait_invisible)
-		{
-			game_engine_player_depower_active_camo(player_index);
-		}
-
 		switch (game_engine_get_variant()->game_engine_variant.oddball.speed_with_ball)
 		{
 		case _oddball_speed_normal:
@@ -895,9 +933,9 @@ static void oddball_engine_player_update(
 
 	if (game_engine_can_score() && accumulate_score_by_time() && ball_count > 0)
 	{
-		long count;
+		long ball_index;
 
-		for (count = ball_count; count; count--)
+		for (ball_index = 0; ball_index < ball_count; ball_index++)
 		{
 			oddball_add_time_with_ball(player_index);
 		}
@@ -921,8 +959,9 @@ static void oddball_engine_player_update(
 				long seconds = oddball_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)] / TICKS_PER_SECOND;
 				struct weapon_datum *weapon = weapon_get(weapon_index);
 				long score = oddball_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)];
+				long countdown_interval = 5 * TICKS_PER_SECOND;
 
-				if (score > 0 && score % (5 * TICKS_PER_SECOND) == 0 && score < oddball_globals.score_to_win)
+				if (score > 0 && score % countdown_interval == 0 && score < oddball_globals.score_to_win)
 				{
 					game_engine_play_multiplayer_sound(_multiplayer_sound_countdown_timer_end);
 				}
@@ -939,24 +978,29 @@ static void oddball_engine_weapon_update(
 	long weapon_index,
 	struct weapon_datum *weapon)
 {
+	long ball_reset_delay = 40 * TICKS_PER_SECOND;
+	real vertical_offset = 0.f;
 	real_point3d position;
 
 	match_assert("c:\\halo\\SOURCE\\game\\game_engine_oddball.c", 595, weapon_is_flag(weapon_index));
 
 	item_get_position_even_if_in_inventory(weapon_index, &position);
-	game_engine_set_goal_position(weapon->object.owner_team_index, &position, 0.f, "ball_blue", NONE, NONE, oddball_globals.current_ball_owner[weapon->object.owner_team_index]);
+	game_engine_set_goal_position(weapon->object.owner_team_index, &position, vertical_offset, "ball_blue", NONE, NONE, oddball_globals.current_ball_owner[weapon->object.owner_team_index]);
 
-	if ((unsigned long)(game_time_get() - weapon->item.last_owned_time) > 40 * TICKS_PER_SECOND &&
-		weapon_is_flag(weapon_index) &&
-		(boolean)TEST_FLAG(weapon->object.flags, _object_connected_to_map_bit) &&
-		weapon->object.parent_object_index == NONE)
+	if ((unsigned long)(game_time_get() - weapon->item.last_owned_time) > ball_reset_delay && weapon_is_flag(weapon_index))
 	{
-		if (TEST_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag))
-		{
-			game_show_score(NONE, oddball_message_ball_was_reset);
-		}
+		boolean connected_to_map = TEST_FLAG(weapon->object.flags, _object_connected_to_map_bit);
+		boolean attached = weapon->object.parent_object_index != NONE;
 
-		reset_ball(weapon_index);
+		if (connected_to_map && !attached)
+		{
+			if (TEST_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag))
+			{
+				game_show_score(NONE, oddball_message_ball_was_reset);
+			}
+
+			reset_ball(weapon_index);
+		}
 	}
 
 	return;
@@ -996,13 +1040,14 @@ static void oddball_engine_update(
 			}
 			else
 			{
-				long unit_index = player_get(owner_index)->unit_index;
+				struct player_datum *player = player_get(owner_index);
 
-				if (unit_index != NONE)
+				if (player->unit_index != NONE)
 				{
-					struct unit_datum *unit = unit_get(unit_index);
+					struct unit_datum *unit = unit_get(player->unit_index);
+					real vertical_offset = 0.f;
 
-					game_engine_set_goal_position((short)ball_index, &unit->object.bounding_sphere_center, 0.f, "target_blue", NONE, NONE, owner_index);
+					game_engine_set_goal_position((short)ball_index, &unit->object.bounding_sphere_center, vertical_offset, "target_blue", NONE, NONE, owner_index);
 				}
 			}
 		}
@@ -1105,11 +1150,11 @@ static boolean oddball_weapon_pickup(
 	}
 	else
 	{
-		long unit_index = player_get(player_index)->unit_index;
+		struct player_datum *player = player_get(player_index);
 
-		if (unit_index != NONE)
+		if (player->unit_index != NONE)
 		{
-			result = !unit_has_weapon_with_flag(unit_index, 3);
+			result = !unit_has_weapon_with_flag(player->unit_index, 3);
 
 			if (result)
 			{

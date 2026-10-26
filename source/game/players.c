@@ -338,14 +338,14 @@ static struct profile_section players_update_before_game_section =
 	"players_update_before_game",
 	NONE,
 	TRUE
-};
+}; /* fake name */
 
 static struct profile_section players_update_after_game_section =
 {
 	"players_update_after_game",
 	NONE,
 	TRUE
-};
+}; /* fake name */
 
 static long machine_to_player_table[MAXIMUM_NETWORK_MACHINE_COUNT][MAXIMUM_NUMBER_OF_LOCAL_PLAYERS];
 
@@ -1212,8 +1212,9 @@ boolean any_player_is_in_the_air(
 		{
 			struct unit_datum *unit = unit_get(player->unit_index);
 			long parent_index = object_get_ultimate_parent(player->unit_index);
+			struct object_datum *parent = object_get(parent_index);
 
-			if (TEST_FLAG(object_get(parent_index)->object.flags, _object_outside_of_map_bit))
+			if (TEST_FLAG(parent->object.flags, _object_outside_of_map_bit))
 			{
 				return TRUE;
 			}
@@ -1239,9 +1240,14 @@ boolean any_player_is_in_the_air(
 			{
 				struct vehicle_datum *vehicle = object_try_and_get_and_verify_type(unit->object.parent_object_index, _object_mask_vehicle);
 
-				if (vehicle && TEST_FLAG(vehicle_definition_get(vehicle->definition_index)->unit.flags, _unit_causes_passenger_dialogue_bit) && vehicle->vehicle.airborne_ticks > 2)
+				if (vehicle)
 				{
-					return TRUE;
+					struct vehicle_definition *definition = vehicle_definition_get(vehicle->definition_index);
+
+					if (TEST_FLAG(definition->unit.flags, _unit_causes_passenger_dialogue_bit) && vehicle->vehicle.airborne_ticks > 2)
+					{
+						return TRUE;
+					}
 				}
 			}
 		}
@@ -1732,10 +1738,12 @@ void placement_data_set_change_color(
 	struct object_placement_data *placement_data,
 	real_rgb_color const *color)
 {
-	placement_data->change_colors[0] = *color;
-	placement_data->change_colors[1] = *color;
-	placement_data->change_colors[2] = *color;
-	placement_data->change_colors[3] = *color;
+	long change_color_index;
+
+	for (change_color_index = 0; change_color_index < NUMBEROF(placement_data->change_colors); change_color_index++)
+	{
+		placement_data->change_colors[change_color_index] = *color;
+	}
 
 	return;
 }
@@ -1984,13 +1992,16 @@ static void player_examine_nearby_objects(
 
 		if (unit->object.parent_object_index == NONE)
 		{
+			unsigned long object_mask = _object_mask_biped | _object_mask_vehicle | _object_mask_weapon | _object_mask_equipment | _object_mask_garbage | _object_mask_control;
 			long object_indices[16];
-			short object_count = objects_in_sphere(0, _object_mask_biped | _object_mask_vehicle | _object_mask_weapon | _object_mask_equipment | _object_mask_garbage | _object_mask_control, &unit->object.location, &unit->object.bounding_sphere_center, unit->object.bounding_sphere_radius, object_indices, NUMBEROF(object_indices));
+			short object_count = objects_in_sphere(0, object_mask, &unit->object.location, &unit->object.bounding_sphere_center, unit->object.bounding_sphere_radius, object_indices, NUMBEROF(object_indices));
 			short object_index;
 
 			for (object_index = 0; object_index < object_count; object_index++)
 			{
-				switch (object_get(object_indices[object_index])->object.type)
+				struct object_datum *object = object_get(object_indices[object_index]);
+
+				switch (object->object.type)
 				{
 				case _object_type_biped:
 					player_examine_nearby_unit(player_index, object_indices[object_index]);
@@ -2022,17 +2033,19 @@ static void player_examine_nearby_vehicle(
 
 	if (!TEST_FLAG(vehicle->object.damage_flags, _object_dead_bit))
 	{
-		real angle = _pi / 2.f - TAG_BLOCK_GET_ELEMENT(&scenario_get_game_globals()->player_control, 0, struct game_globals_player_control)->minimum_vehicle_flipping_angle;
+		struct game_globals_player_control *player_control = TAG_BLOCK_GET_ELEMENT(&scenario_get_game_globals()->player_control, 0, struct game_globals_player_control);
+		real minimum_up = cosine(_pi / 2.f - player_control->minimum_vehicle_flipping_angle);
 
-		if (vehicle_get(vehicle_index)->object.up.k > (real)cos(angle))
+		if (vehicle_get(vehicle_index)->object.up.k > minimum_up)
 		{
 			if (!unit_overcharged(player->unit_index) &&
 				magnitude_squared3d(&unit_get(player->unit_index)->object.translational_velocity) < 0.01f &&
 				magnitude_squared3d(&vehicle_get(vehicle_index)->object.angular_velocity) < 0.01f)
 			{
 				short seat_index = NONE;
+				short seat_result = unit_find_nearby_seat(player->unit_index, vehicle_index, &seat_index);
 
-				switch (unit_find_nearby_seat(player->unit_index, vehicle_index, &seat_index))
+				switch (seat_result)
 				{
 				case _unit_nearby_seat_result_empty:
 					match_assert("c:\\halo\\SOURCE\\game\\players.c", 2108, seat_index != NONE);

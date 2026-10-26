@@ -197,20 +197,14 @@ char *global_material_type_strings[NUMBER_OF_MATERIAL_TYPES] =
 char const *material_get_name(
 	short material_type)
 {
-	char const *result;
-
 	if (material_type != NONE)
 	{
 		match_assert("c:\\halo\\SOURCE\\game\\game_globals.c", 905, material_type>=0 && material_type<NUMBER_OF_MATERIAL_TYPES);
 
-		result = global_material_type_strings[material_type];
-	}
-	else
-	{
-		result = "NONE";
+		return global_material_type_strings[material_type];
 	}
 
-	return result;
+	return "NONE";
 }
 
 real game_difficulty_get_value(

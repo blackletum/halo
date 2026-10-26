@@ -271,7 +271,10 @@ static void find_hill(
 
 	king_globals.hill_point_count = point_count = find_netgame_flags(NULL, 0.f, 0.f, _netgame_flag_hill, (short)king_globals.hill_id, MAXIMUM_HILL_POINTS, hill_flag_indicies);
 
-	if (point_count)
+	if (point_count == 0)
+	{
+	}
+	else
 	{
 		long index;
 		long hull_count;
@@ -290,11 +293,11 @@ static void find_hill(
 			hill_points_3d[1] = hill_points_3d[0];
 			hill_points_3d[2] = hill_points_3d[0];
 			hill_points_3d[3] = hill_points_3d[0];
-			hill_points_3d[0].x -= 1.f;
-			hill_points_3d[0].y -= 1.f;
+			hill_points_3d[0].x += -1.f;
+			hill_points_3d[0].y += -1.f;
 			hill_points_3d[1].x += 1.f;
-			hill_points_3d[1].y -= 1.f;
-			hill_points_3d[2].x -= 1.f;
+			hill_points_3d[1].y += -1.f;
+			hill_points_3d[2].x += -1.f;
 			hill_points_3d[2].y += 1.f;
 			hill_points_3d[3].x += 1.f;
 			hill_points_3d[3].y += 1.f;
@@ -306,8 +309,10 @@ static void find_hill(
 
 		for (index = 0; index < hull_count; index++)
 		{
-			king_globals.hill_points[index] = hill_points_3d[hull_indices[index]];
-			king_globals.convex_hull[index] = hill_points_2d[hull_indices[index]];
+			short hull_index = hull_indices[index];
+
+			king_globals.hill_points[index] = hill_points_3d[hull_index];
+			king_globals.convex_hull[index] = hill_points_2d[hull_index];
 		}
 
 		king_globals.hill_point_count = hull_count;
@@ -316,42 +321,19 @@ static void find_hill(
 
 		for (index = 0; index < king_globals.hill_point_count; index++)
 		{
-			if (min_point.x > king_globals.hill_points[index].x)
-			{
-				min_point.x = king_globals.hill_points[index].x;
-			}
-
-			if (min_point.y > king_globals.hill_points[index].y)
-			{
-				min_point.y = king_globals.hill_points[index].y;
-			}
-
-			if (min_point.z > king_globals.hill_points[index].z)
-			{
-				min_point.z = king_globals.hill_points[index].z;
-			}
-
-			if (!(max_point.x > king_globals.hill_points[index].x))
-			{
-				max_point.x = king_globals.hill_points[index].x;
-			}
-
-			if (!(max_point.y > king_globals.hill_points[index].y))
-			{
-				max_point.y = king_globals.hill_points[index].y;
-			}
-
-			if (!(max_point.z > king_globals.hill_points[index].z))
-			{
-				max_point.z = king_globals.hill_points[index].z;
-			}
+			min_point.x = MIN(min_point.x, king_globals.hill_points[index].x);
+			min_point.y = MIN(min_point.y, king_globals.hill_points[index].y);
+			min_point.z = MIN(min_point.z, king_globals.hill_points[index].z);
+			max_point.x = MAX(max_point.x, king_globals.hill_points[index].x);
+			max_point.y = MAX(max_point.y, king_globals.hill_points[index].y);
+			max_point.z = MAX(max_point.z, king_globals.hill_points[index].z);
 		}
 
 		king_globals.hill_bottom = min_point.z - 0.1f;
 		king_globals.hill_top = max_point.z + 0.8f;
-		king_globals.hill_center.x = (max_point.x + min_point.x) * 0.5f;
-		king_globals.hill_center.y = (max_point.y + min_point.y) * 0.5f;
-		king_globals.hill_center.z = (max_point.z + min_point.z) * 0.5f;
+		king_globals.hill_center.x = (max_point.x + min_point.x) / 2.f;
+		king_globals.hill_center.y = (max_point.y + min_point.y) / 2.f;
+		king_globals.hill_center.z = (max_point.z + min_point.z) / 2.f;
 	}
 
 	return;
@@ -366,7 +348,7 @@ static void king_engine_dispose_from_old_map(
 static void king_engine_player_added(
 	long player_index)
 {
-	player_get(player_index);
+	struct player_datum *player = player_get(player_index);
 
 	return;
 }
@@ -420,11 +402,11 @@ static boolean player_inside_hill(
 
 	if (player_index != NONE)
 	{
-		long unit_index = player_get(player_index)->unit_index;
+		struct player_datum *player = player_get(player_index);
 
-		if (unit_index != NONE)
+		if (player->unit_index != NONE)
 		{
-			struct unit_datum *unit = unit_get(unit_index);
+			struct unit_datum *unit = unit_get(player->unit_index);
 			real_point3d *position = &unit->object.bounding_sphere_center;
 
 			if (position->z >= king_globals.hill_bottom && position->z <= king_globals.hill_top)
@@ -445,66 +427,70 @@ static void king_engine_player_update(
 	long player_index)
 {
 	struct player_datum *player = player_get(player_index);
+	long unit_index;
+	struct unit_datum *unit;
 
 	game_engine_state_message(player_index, NONE, NONE);
 	king_globals.on_the_hill[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)] = FALSE;
 
-	if (player->unit_index != NONE)
+	unit_index = player->unit_index;
+	if (unit_index == NONE)
 	{
-		unit_get(player->unit_index);
+		return;
+	}
 
-		if (game_engine_can_score() && player_inside_hill(player_index))
+	unit = unit_get(unit_index);
+	if (game_engine_can_score() && player_inside_hill(player_index))
+	{
+		king_globals.on_the_hill[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)] = TRUE;
+		player->statistics.multiplayer_statistics.king_statistics.time_on_hill++;
+
+		if (king_globals.score_tick[player->team_index] < game_time_get())
 		{
-			king_globals.on_the_hill[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)] = TRUE;
-			player->statistics.multiplayer_statistics.king_statistics.time_on_hill++;
+			long maximum_score;
+			long score;
 
-			if (king_globals.score_tick[player->team_index] < game_time_get())
+			king_globals.score[player->team_index]++;
+			king_globals.score_tick[player->team_index] = game_time_get();
+			maximum_score = game_engine_get_variant()->universal_variant.score_to_win * TICKS_PER_MINUTE;
+			score = king_globals.score[player->team_index];
+
+			if (maximum_score - score == 30 * TICKS_PER_SECOND)
 			{
-				long maximum_score;
-				long score;
-
-				king_globals.score[player->team_index]++;
-				king_globals.score_tick[player->team_index] = game_time_get();
-				maximum_score = game_engine_get_variant()->universal_variant.score_to_win * TICKS_PER_MINUTE;
-				score = king_globals.score[player->team_index];
-
-				if (maximum_score - score == 30 * TICKS_PER_SECOND)
+				if (game_engine_has_teams())
 				{
-					if (game_engine_has_teams())
-					{
-						game_engine_play_multiplayer_sound(player->team_index ? _multiplayer_sound_blue_30_seconds : _multiplayer_sound_red_30_seconds);
-					}
-					else
-					{
-						game_engine_play_multiplayer_sound(_multiplayer_sound_30_seconds);
-					}
+					game_engine_play_multiplayer_sound(player->team_index ? _multiplayer_sound_blue_30_seconds : _multiplayer_sound_red_30_seconds);
 				}
-
-				if (maximum_score - score == 60 * TICKS_PER_SECOND)
+				else
 				{
-					if (game_engine_has_teams())
-					{
-						game_engine_play_multiplayer_sound(player->team_index ? _multiplayer_sound_blue_60_seconds : _multiplayer_sound_red_60_seconds);
-					}
-					else
-					{
-						game_engine_play_multiplayer_sound(_multiplayer_sound_60_seconds);
-					}
-				}
-
-				if (king_globals.score[player->team_index] > 0 && king_globals.score[player->team_index] % (5 * TICKS_PER_SECOND) == 0 && king_globals.score[player->team_index] < maximum_score)
-				{
-					game_engine_play_multiplayer_sound(_multiplayer_sound_countdown_timer_end);
-				}
-
-				if (score >= maximum_score)
-				{
-					game_engine_end_game();
+					game_engine_play_multiplayer_sound(_multiplayer_sound_30_seconds);
 				}
 			}
 
-			game_engine_state_message(player_index, king_message_you_are_on_the_hill, player_index);
+			if (maximum_score - score == 60 * TICKS_PER_SECOND)
+			{
+				if (game_engine_has_teams())
+				{
+					game_engine_play_multiplayer_sound(player->team_index ? _multiplayer_sound_blue_60_seconds : _multiplayer_sound_red_60_seconds);
+				}
+				else
+				{
+					game_engine_play_multiplayer_sound(_multiplayer_sound_60_seconds);
+				}
+			}
+
+			if (king_globals.score[player->team_index] > 0 && king_globals.score[player->team_index] % (5 * TICKS_PER_SECOND) == 0 && king_globals.score[player->team_index] < maximum_score)
+			{
+				game_engine_play_multiplayer_sound(_multiplayer_sound_countdown_timer_end);
+			}
+
+			if (score >= maximum_score)
+			{
+				game_engine_end_game();
+			}
 		}
+
+		game_engine_state_message(player_index, king_message_you_are_on_the_hill, player_index);
 	}
 
 	return;
@@ -513,13 +499,12 @@ static void king_engine_player_update(
 static void king_calculate_hill_state(
 	void)
 {
-	struct data_iterator player_iterator;
-	struct player_datum *player;
-
 	if (game_engine_has_teams())
 	{
 		long red_count = 0;
 		long blue_count = 0;
+		struct data_iterator player_iterator;
+		struct player_datum *player;
 
 		data_iterator_new(&player_iterator, player_data);
 
@@ -590,6 +575,8 @@ static void king_calculate_hill_state(
 	{
 		long count = 0;
 		long controller;
+		struct data_iterator player_iterator;
+		struct player_datum *player;
 
 		data_iterator_new(&player_iterator, player_data);
 
@@ -723,13 +710,18 @@ static long king_get_score(
 	enum get_score_type get_score_type)
 {
 	struct player_datum *player = player_get(player_index);
+	long score;
 
 	if (get_score_type == _get_score_individual)
 	{
-		return player->statistics.multiplayer_statistics.king_statistics.time_on_hill;
+		score = player->statistics.multiplayer_statistics.king_statistics.time_on_hill;
+	}
+	else
+	{
+		score = king_globals.score[player->team_index];
 	}
 
-	return king_globals.score[player->team_index];
+	return score;
 }
 
 void render_dynamic_quad_initialize(
@@ -1032,30 +1024,33 @@ static void king_engine_update(
 	if (game_engine_can_score() && game_engine_get_variant()->game_engine_variant.king.moving_hill && --king_globals.hill_timer == 0)
 	{
 		king_globals.hill_timer = TICKS_PER_MINUTE;
-		king_globals.hill_id = find_next_hill(king_globals.hill_id);
-		find_hill();
-		game_engine_play_multiplayer_sound(_multiplayer_sound_hill_move);
 
-		while (king_globals.hill_point_count == 0)
+		while (TRUE)
 		{
+			king_globals.hill_id = find_next_hill(king_globals.hill_id);
+			find_hill();
+			game_engine_play_multiplayer_sound(_multiplayer_sound_hill_move);
+
+			if (king_globals.hill_point_count)
+			{
+				break;
+			}
+
 			error(_error_silent, "failed to find hill #%d most likely bad point placement", king_globals.hill_id);
 
 			if (king_globals.hill_id == 0)
 			{
 				break;
 			}
-
-			king_globals.hill_id = find_next_hill(king_globals.hill_id);
-			find_hill();
-			game_engine_play_multiplayer_sound(_multiplayer_sound_hill_move);
 		}
 	}
 
 	if (king_globals.hill_point_count > 0)
 	{
 		real_point3d position = king_globals.hill_center;
+		real vertical_offset = 0.f;
 
-		game_engine_set_goal_position(0, &position, 0.f, "crown_blue", NONE, NONE, NONE);
+		game_engine_set_goal_position(0, &position, vertical_offset, "crown_blue", NONE, NONE, NONE);
 	}
 	else
 	{

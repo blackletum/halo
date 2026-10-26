@@ -288,6 +288,7 @@ static long find_closest_vehicle(
 {
 	real closest_distance = 1000000.f;
 	long closest_index = NONE;
+	long ignore_index;
 	struct scenario *scenario = global_scenario_get();
 	struct game_globals *game_globals = scenario_get_game_globals();
 	struct game_globals_multiplayer_information *multiplayer_information = TAG_BLOCK_GET_ELEMENT(&game_globals->multiplayer_information, 0, struct game_globals_multiplayer_information);
@@ -300,7 +301,7 @@ static long find_closest_vehicle(
 		if (flag->type == _netgame_flag_race_vehicle)
 		{
 			boolean ignore = FALSE;
-			long ignore_index;
+			real distance;
 
 			for (ignore_index = 0; ignore_index < ignore_these_count; ignore_index++)
 			{
@@ -311,21 +312,21 @@ static long find_closest_vehicle(
 				}
 			}
 
-			if (!ignore)
+			if (ignore)
 			{
-				real distance;
+				continue;
+			}
 
-				if (!point)
-				{
-					return flag_index;
-				}
+			if (!point)
+			{
+				return flag_index;
+			}
 
-				distance = distance_squared3d(point, &flag->position);
-				if (distance < closest_distance)
-				{
-					closest_distance = distance;
-					closest_index = flag_index;
-				}
+			distance = distance_squared3d(point, &flag->position);
+			if (distance < closest_distance)
+			{
+				closest_distance = distance;
+				closest_index = flag_index;
 			}
 		}
 	}
@@ -493,13 +494,15 @@ static boolean race_engine_initialize_for_new_map(
 			}
 			else
 			{
+				real vertical_offset = 0.f;
+
 				if (first_flag > flag->team_index)
 				{
 					first_flag = flag->team_index;
 				}
 
 				SET_FLAG(race_globals.lap_completed_value, flag->team_index, TRUE);
-				game_engine_set_goal_position(flag->team_index, &flag->position, 0.f, "flag_blue", NONE, NONE, NONE);
+				game_engine_set_goal_position(flag->team_index, &flag->position, vertical_offset, "flag_blue", NONE, NONE, NONE);
 			}
 		}
 	}
@@ -595,12 +598,13 @@ static void race_complete_lap(
 	long player_index)
 {
 	struct player_datum *player = player_get(player_index);
+	long absolute_player_index = DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index);
 	long lap_time = game_time_get() - player->multiplayer.special;
 	struct data_iterator iterator;
 	struct player_datum *other_player;
 	long team_laps;
 
-	race_globals.lap_bit_vector[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)] = 0;
+	race_globals.lap_bit_vector[absolute_player_index] = 0;
 	game_engine_play_multiplayer_sound(_multiplayer_sound_countdown_timer_end);
 	player->statistics.multiplayer_statistics.race_statistics.last_lap_time = (short)lap_time;
 
@@ -679,8 +683,8 @@ static boolean can_touch_team(
 {
 	struct player_datum *player = player_get(player_index);
 	long absolute_player_index = DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index);
-	unsigned long remaining_flags = ~race_globals.lap_bit_vector[absolute_player_index] & race_globals.lap_completed_value;
 	boolean result = TRUE;
+	unsigned long remaining_flags = ~race_globals.lap_bit_vector[absolute_player_index] & race_globals.lap_completed_value;
 
 	if (team_index >= MAXIMUM_RACE_FLAGS)
 	{
@@ -825,12 +829,16 @@ static void race_engine_player_update(
 		if (unit->object.parent_object_index != NONE)
 		{
 			struct unit_datum *vehicle = (struct unit_datum *)object_get_and_verify_type(unit->object.parent_object_index, _object_mask_unit);
+			real distance = 2.5f;
 
-			flag_index = find_netgame_flag(&vehicle->object.bounding_sphere_center, 2.5f, 0.f, _netgame_flag_race_track, NONE);
+			flag_index = find_netgame_flag(&vehicle->object.bounding_sphere_center, distance, 0.f, _netgame_flag_race_track, NONE);
 		}
 		else
 		{
-			flag_index = find_netgame_flag(&unit->object.bounding_sphere_center, 1.5f, 0.6f, _netgame_flag_race_track, NONE);
+			real distance = 1.5f;
+			real height_delta = 0.6f;
+
+			flag_index = find_netgame_flag(&unit->object.bounding_sphere_center, distance, height_delta, _netgame_flag_race_track, NONE);
 		}
 
 		if (flag_index != NONE)
@@ -877,18 +885,18 @@ static boolean race_team_can_win_game(
 static void build_player_speeds(
 	void)
 {
-	struct data_iterator iterator;
+	struct data_iterator player_iterator;
 	struct player_datum *player;
 	long maximum_laps = 0;
 
-	data_iterator_new(&iterator, player_data);
-	while (player = (struct player_datum *)data_iterator_next(&iterator))
+	data_iterator_new(&player_iterator, player_data);
+	while (player = (struct player_datum *)data_iterator_next(&player_iterator))
 	{
 		maximum_laps = MAX(maximum_laps, player->statistics.multiplayer_statistics.race_statistics.laps);
 	}
 
-	data_iterator_new(&iterator, player_data);
-	while (player = (struct player_datum *)data_iterator_next(&iterator))
+	data_iterator_new(&player_iterator, player_data);
+	while (player = (struct player_datum *)data_iterator_next(&player_iterator))
 	{
 		real speed_multiplier = 1.f;
 		long laps_behind = maximum_laps - player->statistics.multiplayer_statistics.race_statistics.laps;
