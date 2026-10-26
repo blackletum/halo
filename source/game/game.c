@@ -730,7 +730,7 @@ void game_set_game_variant_from_name(
 void game_set_game_variant(
 	struct game_variant *variant)
 {
-	if (!variant)
+	if (NULL == variant)
 	{
 		memset(&game_variant_global, 0, sizeof(game_variant_global));
 	}
