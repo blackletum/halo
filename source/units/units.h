@@ -565,6 +565,7 @@ struct unit_datum
 
 /* ---------- prototypes/UNITS.C */
 
+boolean any_unit_is_dangerous(void);
 boolean unit_has_weapon_definition_index(long unit_index, long definition_index);
 boolean unit_add_weapon_to_inventory(long unit_index, long weapon_index, short mode);
 boolean unit_has_weapon_with_flag(long unit_index, long flag);
@@ -588,6 +589,7 @@ void unit_set_mouth_aperture(long unit_index, real aperture);
 
 boolean unit_update(long unit_index);
 void unit_kill(long unit_index);
+void unit_kill_no_statistics(long unit_index);
 boolean unit_unsuspecting(long unit_index, real_point3d const *attacker);
 void unit_damage_aftermath(long unit_index, struct damage_data *damage_data, unsigned long being_damaged_flags, real shield_damage, real body_damage, real body_damage_multiplier, short body_part);
 

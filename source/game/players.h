@@ -136,6 +136,7 @@ struct unit_camera_info
 
 /* ---------- prototypes/PLAYER_CONTROL.C */
 
+void player_control_initialize_for_new_map(void);
 void player_control_update(real seconds_elapsed);
 
 void player_control_unzoom(long unit_index);
@@ -153,6 +154,15 @@ short unit_get_local_player_index(long unit_index);
 void player_control_set_facing(short local_player_index, real_vector3d const *facing);
 
 /* ---------- prototypes/PLAYERS.C */
+
+void players_initialize(void);
+void players_initialize_for_new_map(void);
+void players_dispose_from_old_map(void);
+void players_dispose(void);
+void players_update_before_game(void);
+void players_update_after_game(void);
+boolean any_player_is_in_the_air(void);
+boolean any_player_is_dead(void);
 
 long player_new(long machine_index, long player_index, short local_player_index, struct network_player *network_player_data);
 void local_player_set_player_index(short local_player_index, long player_index);
@@ -182,6 +192,11 @@ void player_input_enable(boolean enable);
 
 /* ---------- prototypes/PLAYER_RUMBLE.C */
 
+void rumble_initialize(void);
+void rumble_dispose(void);
+void rumble_initialize_for_new_map(void);
+void rumble_dispose_from_old_map(void);
+void rumble_update(void);
 void rumble_player_clear(short local_player_index);
 void rumble_clear_all_now(void);
 

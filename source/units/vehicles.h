@@ -67,6 +67,7 @@ struct vehicle_datum
 
 /* ---------- prototypes/VEHICLES.C */
 
+boolean vehicle_moving_near_any_player(void);
 void vehicles_initialize(void);
 void vehicles_dispose(void);
 void vehicles_initialize_for_new_map(void);

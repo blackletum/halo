@@ -162,6 +162,11 @@ void game_set_game_variant_from_name(const char *name);
 
 /* ---------- prototypes/GAME_ALLEGIANCE.C */
 
+void game_allegiance_initialize(void);
+void game_allegiance_dispose(void);
+void game_allegiance_initialize_for_new_map(void);
+void game_allegiance_dispose_from_old_map(void);
+void game_allegiance_update(void);
 boolean game_team_is_enemy(short our_team, short other_team);
 boolean game_team_is_ally(short our_team, short other_team);
 short game_allegiance_get_incidents(short our_team_index, short other_team_index, short *incident_threshold);
@@ -173,6 +178,7 @@ void game_allegiance_notify_change(short aggressor_team_index, short victim_team
 
 /* ---------- prototypes/GAME_STATISTICS.C */
 
+void game_statistics_start(void);
 void game_statistics_record_damage(long object_index, real damage, long owner_player_index, long owner_object_index, short owner_team_index);
 void game_statistics_record_kill(long object_index, long owner_player_index, long owner_object_index, short owner_team_index);
 

@@ -16,6 +16,9 @@ header included in hcex build.
 
 /* ---------- prototypes/PLAYER_UI.C */
 
+void player_ui_initialize(void);
+void player_ui_dispose(void);
+void player_ui_remember_player1_profile(boolean write_to_disk);
 short player_ui_get_single_player_local_player_controller(short local_player_index);
 boolean player_ui_local_player_wants_to_play_multiplayer(short local_player_index);
 boolean player_ui_rumble_disabled(short local_player_index);
