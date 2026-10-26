@@ -96,6 +96,7 @@ enum
 	_game_difficulty_unused2,
 	_game_difficulty_unused3,
 	_game_difficulty_unused4,
+	NUMBER_OF_GAME_DIFFICULTY_VALUES
 };
 
 enum
@@ -327,6 +328,12 @@ struct game_globals_falling_damage
 	real runtime_maximum_falling_velocity;
 	real runtime_minimum_damage_velocity;
 	real runtime_maximum_damage_velocity;
+};
+
+struct game_globals_difficulty_information
+{
+	real game_difficulty_values[NUMBER_OF_GAME_DIFFICULTY_VALUES][4];
+	unsigned long unused[21];
 };
 
 struct game_globals

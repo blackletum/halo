@@ -232,6 +232,23 @@ struct scenario_object_name
 	short runtime_scenario_datum_index;
 };
 
+struct starting_weapon_info
+{
+	struct tag_reference weapon;
+	short rounds_loaded;
+	short rounds_total;
+};
+
+struct scenario_starting_profile
+{
+	char name[32];
+	real starting_health;
+	real starting_shield;
+	struct starting_weapon_info starting_weapons[2];
+	byte starting_grenade_counts[4];
+	long unused[5];
+};
+
 struct scenario_player
 {
 	real_point3d position;
@@ -304,6 +321,14 @@ struct scenario_trigger_volume
 			real_rectangle3d rectangle;
 		} world_aligned_bounding_box;
 	};
+};
+
+struct scenario_bsp_switch_trigger_volume
+{
+	short trigger_volume_index;
+	short source_bsp_index;
+	short destination_bsp_index;
+	short safe_flag_index;
 };
 
 struct scenario_cutscene_flag

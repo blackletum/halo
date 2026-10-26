@@ -617,7 +617,7 @@ void remove_quitting_players_from_game(
 }
 
 void game_tick(
-	long ticks_remaining_this_frame)
+	void)
 {
 	profile_tick_start();
 	collision_log_begin_period(_collision_period_game_tick);

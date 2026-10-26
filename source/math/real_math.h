@@ -55,6 +55,18 @@ match_vassert(												\
 	)														\
 )
 
+#define match_assert_valid_real_vector2d(file, line, vector)	\
+match_vassert(													\
+	file,														\
+	line,														\
+	valid_real_vector2d(vector),								\
+	csprintf(													\
+		temporary,												\
+		"%s: assert_valid_real_vector2d(%f, %f)",				\
+		#vector, (*vector).i, (*vector).j						\
+	)															\
+)
+
 #define match_assert_valid_real_vector3d(file, line, vector)	\
 match_vassert(													\
 	file,														\
@@ -780,11 +792,14 @@ __inline boolean limit2d(
 	real length)
 {
 	real dot = vector->i*vector->i + vector->j*vector->j;
-	if (dot <= length*length)
-		return FALSE;
 
-	scale_vector2d(vector, length / square_root(dot), vector);
-	return TRUE;
+	if (dot > length*length)
+	{
+		scale_vector2d(vector, length * reciprocal_square_root(dot), vector);
+		return TRUE;
+	}
+
+	return FALSE;
 }
 
 __inline real distance_squared2d(
@@ -1003,11 +1018,14 @@ __inline boolean limit3d(
 	real length)
 {
 	real dot = vector->i*vector->i + vector->j*vector->j + vector->k*vector->k;
-	if (dot <= length*length)
-		return FALSE;
 
-	scale_vector3d(vector, length / square_root(dot), vector);
-	return TRUE;
+	if (dot > length*length)
+	{
+		scale_vector3d(vector, length * reciprocal_square_root(dot), vector);
+		return TRUE;
+	}
+
+	return FALSE;
 }
 
 __inline real distance_squared3d(
@@ -1508,6 +1526,12 @@ __inline boolean valid_real_point3d(
 	real_point3d const *p)
 {
 	return valid_real(p->x) && valid_real(p->y) && valid_real(p->z);
+}
+
+__inline boolean valid_real_vector2d(
+	real_vector2d const *v)
+{
+	return valid_real(v->i) && valid_real(v->j);
 }
 
 __inline boolean valid_real_vector3d(
