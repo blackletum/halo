@@ -201,6 +201,7 @@ if (!valid_real_matrix4x3(matrix))															\
 
 #define assert_valid_real(v) match_assert_valid_real(__FILE__, __LINE__, v)
 #define assert_valid_real_point3d(point) match_assert_valid_real_point3d(__FILE__, __LINE__, point)
+#define assert_valid_real_vector2d(vector) match_assert_valid_real_vector2d(__FILE__, __LINE__, vector)
 #define assert_valid_real_vector3d(vector) match_assert_valid_real_vector3d(__FILE__, __LINE__, vector)
 #define assert_valid_real_plane3d(plane) match_assert_valid_real_plane3d(__FILE__, __LINE__, plane)
 #define assert_valid_real_normal3d(vector) match_assert_valid_real_normal3d(__FILE__, __LINE__, vector)
