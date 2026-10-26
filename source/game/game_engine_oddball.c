@@ -246,457 +246,6 @@ static struct oddball_globals_type oddball_globals;
 
 /* ---------- private code */
 
-static void oddball_engine_dispose(
-	void)
-{
-	return;
-}
-
-static void oddball_engine_dispose_from_old_map(
-	void)
-{
-	return;
-}
-
-static void oddball_engine_player_added(
-	long player_index)
-{
-	struct player_datum *player = player_get(player_index);
-
-	return;
-}
-
-static void oddball_engine_game_ending(
-	void)
-{
-	return;
-}
-
-static void oddball_engine_game_starting(
-	void)
-{
-	return;
-}
-
-static void oddball_engine_statistics_append(
-	struct game_statistics *permanent_statistics,
-	struct game_statistics *game_statistics)
-{
-	return;
-}
-
-static void oddball_engine_handle_client_message(
-	long player_index,
-	void *encoded_message,
-	short encoded_message_size)
-{
-	return;
-}
-
-static void oddball_engine_handle_server_message(
-	void *encoded_message,
-	short encoded_message_size)
-{
-	return;
-}
-
-static void oddball_engine_pregame_post_rasterize(
-	void)
-{
-	return;
-}
-
-static void oddball_engine_post_rasterize(
-	void)
-{
-	return;
-}
-
-static void oddball_add_score(
-	long player_index)
-{
-	struct player_datum *player = player_get(player_index);
-
-	oddball_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)]++;
-	oddball_globals.team_score[player->team_index]++;
-
-	if (oddball_globals.score_to_win - oddball_globals.team_score[player->team_index] == 30 * TICKS_PER_SECOND)
-	{
-		if (game_engine_has_teams())
-		{
-			game_engine_play_multiplayer_sound(player->team_index ? _multiplayer_sound_blue_30_seconds : _multiplayer_sound_red_30_seconds);
-		}
-		else
-		{
-			game_engine_play_multiplayer_sound(_multiplayer_sound_30_seconds);
-		}
-	}
-
-	if (oddball_globals.score_to_win - oddball_globals.team_score[player->team_index] == 60 * TICKS_PER_SECOND)
-	{
-		if (game_engine_has_teams())
-		{
-			game_engine_play_multiplayer_sound(player->team_index ? _multiplayer_sound_blue_60_seconds : _multiplayer_sound_red_60_seconds);
-		}
-		else
-		{
-			game_engine_play_multiplayer_sound(_multiplayer_sound_60_seconds);
-		}
-	}
-
-	if (oddball_globals.team_score[player->team_index] >= oddball_globals.score_to_win)
-	{
-		game_engine_end_game();
-	}
-
-	return;
-}
-
-static void oddball_add_time_with_ball(
-	long player_index)
-{
-	struct player_datum *player = player_get(player_index);
-
-	if (game_engine_get_variant()->game_engine_variant.oddball.oddball_ball_type == _oddball_normal)
-	{
-		game_engine_state_message(player_index, oddball_message_you_have_the_ball_tick, player_index);
-	}
-
-	player->statistics.multiplayer_statistics.oddball_statistics.time_with_the_ball++;
-	oddball_add_score(player_index);
-
-	return;
-}
-
-static long player_ball_count(
-	long player_index)
-{
-	long count = 0;
-	long ball_count = game_engine_get_variant()->game_engine_variant.oddball.ball_spawn_count;
-	long ball_index;
-
-	for (ball_index = 0; ball_index < ball_count; ball_index++)
-	{
-		if (oddball_globals.current_ball_owner[ball_index] == player_index)
-		{
-			count++;
-		}
-	}
-
-	return count;
-}
-
-static void oddball_engine_player_damaged_player(
-	long killing_player_index,
-	long dead_player_index,
-	boolean friendly_fire)
-{
-	return;
-}
-
-boolean player_has_ball(
-	long player_index)
-{
-	long ball_count = game_engine_get_variant()->game_engine_variant.oddball.ball_spawn_count;
-	boolean result = FALSE;
-	long ball_index;
-
-	for (ball_index = 0; ball_index < ball_count; ball_index++)
-	{
-		if (oddball_globals.current_ball_owner[ball_index] == player_index)
-		{
-			result = TRUE;
-			break;
-		}
-	}
-
-	return result;
-}
-
-boolean ball_available(
-	void)
-{
-	long ball_count = game_engine_get_variant()->game_engine_variant.oddball.ball_spawn_count;
-	boolean result = FALSE;
-	long ball_index;
-
-	for (ball_index = 0; ball_index < ball_count; ball_index++)
-	{
-		if (oddball_globals.ball_spawn_timer[ball_index] != 0)
-		{
-			continue;
-		}
-
-		if (oddball_globals.current_ball_owner[ball_index] == NONE)
-		{
-			result = TRUE;
-			break;
-		}
-	}
-
-	return result;
-}
-
-static boolean oddball_engine_display_score(
-	long player_index,
-	long message,
-	long message_data,
-	word *buffer,
-	long buffer_size)
-{
-	struct player_datum *player = player_get(player_index);
-	boolean result = TRUE;
-	wchar_t *string;
-
-	switch (message)
-	{
-	case oddball_message_you_are_it:
-		multiplayer_game_text_get_string(string, _string_you_are_it);
-		ustrncpy(buffer, string, buffer_size);
-		break;
-	case oddball_message_ally_is_it:
-		multiplayer_game_text_get_string(string, _string_ally_is_it);
-		ustrncpy(buffer, string, buffer_size);
-		break;
-	case oddball_message_enemy_is_it:
-	{
-		struct player_datum *message_player = player_get(message_data);
-
-		multiplayer_game_text_get_string(string, _string_name_is_it);
-		usnprintf(buffer, buffer_size, string, message_player->name);
-		break;
-	}
-	case oddball_message_you_have_the_ball:
-		multiplayer_game_text_get_string(string, _string_you_have_the_ball);
-		ustrncpy(buffer, string, buffer_size);
-		break;
-	case oddball_message_ally_has_the_ball:
-		multiplayer_game_text_get_string(string, _string_an_ally_has_the_ball);
-		ustrncpy(buffer, string, buffer_size);
-		break;
-	case oddball_message_enemy_has_the_ball:
-	{
-		struct player_datum *message_player = player_get(message_data);
-
-		multiplayer_game_text_get_string(string, _string_name_has_the_ball);
-		usnprintf(buffer, buffer_size, string, message_player->name);
-		break;
-	}
-	case oddball_message_enemy_has_the_ball_tick:
-	case oddball_message_ally_has_the_ball_tick:
-	case oddball_message_you_have_the_ball_tick:
-	{
-		struct player_datum *message_player = player_get(message_data);
-		long seconds = oddball_globals.team_score[message_player->team_index] / TICKS_PER_SECOND;
-
-		if (message == oddball_message_you_have_the_ball_tick)
-		{
-			wchar_t *place_name = get_place_name(game_engine_get_place(player_index, _get_score_team));
-
-			multiplayer_game_text_get_string(string, _string_place_score_seconds);
-			usnprintf(buffer, buffer_size, string, place_name, seconds);
-		}
-		else if (message == oddball_message_ally_has_the_ball_tick)
-		{
-			multiplayer_game_text_get_string(string, _string_ally_name_has_the_ball_score_seconds);
-			usnprintf(buffer, buffer_size, string, message_player->name, seconds);
-		}
-		else if (message == oddball_message_enemy_has_the_ball_tick)
-		{
-			multiplayer_game_text_get_string(string, _string_enemy_name_has_the_ball_score_seconds);
-			usnprintf(buffer, buffer_size, string, message_player->name, seconds);
-		}
-		break;
-	}
-	default:
-		result = FALSE;
-		break;
-	}
-
-	return result;
-}
-
-static void oddball_engine_prespawn_player_update(
-	long player_index)
-{
-	return;
-}
-
-static void oddball_weapon_drop(
-	long weapon_index)
-{
-	match_assert("c:\\halo\\SOURCE\\game\\game_engine_oddball.c", 968, weapon_is_flag(weapon_index));
-
-	return;
-}
-
-static long oddball_get_score(
-	long player_index,
-	enum get_score_type get_score_type)
-{
-	long score;
-	struct player_datum *player = player_get(player_index);
-
-	if (get_score_type == _get_score_team)
-	{
-		score = oddball_globals.team_score[player->team_index];
-	}
-	else
-	{
-		score = oddball_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)];
-	}
-
-	return score;
-}
-
-static boolean oddball_ball_transfer_by_killing(
-	void)
-{
-	boolean result;
-
-	switch (game_engine_get_variant()->game_engine_variant.oddball.oddball_ball_type)
-	{
-	case _oddball_magic:
-	case _oddball_terminator:
-		result = TRUE;
-		break;
-	default:
-		result = FALSE;
-		break;
-	}
-
-	return result;
-}
-
-static boolean accumulate_score_by_time(
-	void)
-{
-	boolean result;
-
-	switch (game_engine_get_variant()->game_engine_variant.oddball.oddball_ball_type)
-	{
-	case _oddball_terminator:
-		result = FALSE;
-		break;
-	default:
-		result = TRUE;
-		break;
-	}
-
-	return result;
-}
-
-static boolean terminator_scoring_rules(
-	void)
-{
-	boolean result;
-
-	switch (game_engine_get_variant()->game_engine_variant.oddball.oddball_ball_type)
-	{
-	case _oddball_terminator:
-		result = TRUE;
-		break;
-	default:
-		result = FALSE;
-		break;
-	}
-
-	return result;
-}
-
-static boolean oddball_test_flag(
-	long flag)
-{
-	boolean result = FALSE;
-
-	switch (flag)
-	{
-	case _game_engine_show_kills_with_score_bit:
-		result = terminator_scoring_rules();
-		break;
-	}
-
-	return result;
-}
-
-static boolean oddball_test_trait(
-	long player_index,
-	long trait)
-{
-	boolean result = FALSE;
-
-	if (trait != _game_trait_none)
-	{
-		if (player_has_ball(player_index))
-		{
-			result = trait == game_engine_get_variant()->game_engine_variant.oddball.trait_with_ball;
-		}
-		else
-		{
-			result = trait == game_engine_get_variant()->game_engine_variant.oddball.trait_without_ball;
-		}
-	}
-
-	return result;
-}
-
-static word *oddball_get_score_string(
-	long player_index,
-	word *buffer)
-{
-	long score = oddball_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)];
-
-	if (terminator_scoring_rules())
-	{
-		usprintf(buffer, L"%d", score);
-	}
-	else
-	{
-		ticks_to_unicode_time_string(score, 256, buffer);
-	}
-
-	return buffer;
-}
-
-static word *oddball_get_score_header_string(
-	word *buffer)
-{
-	short string_index;
-	wchar_t *string;
-
-	if (terminator_scoring_rules())
-	{
-		string_index = _string_score;
-	}
-	else
-	{
-		string_index = _string_time;
-	}
-
-	multiplayer_game_text_get_string(string, string_index);
-	ustrcpy(buffer, string);
-
-	return buffer;
-}
-
-static word *oddball_get_team_score_string(
-	long team_index,
-	word *buffer)
-{
-	long score = oddball_globals.team_score[team_index];
-
-	if (terminator_scoring_rules())
-	{
-		usprintf(buffer, L"%d", score);
-	}
-	else
-	{
-		ticks_to_unicode_time_string(score, 256, buffer);
-	}
-
-	return buffer;
-}
-
 static real_point3d find_position_for_ball(
 	long ball_index)
 {
@@ -785,6 +334,12 @@ static void create_the_ball(
 	return;
 }
 
+static void oddball_engine_dispose(
+	void)
+{
+	return;
+}
+
 static boolean oddball_engine_initialize_for_new_map(
 	void)
 {
@@ -842,6 +397,66 @@ static boolean oddball_engine_initialize_for_new_map(
 	return TRUE;
 }
 
+static void oddball_engine_dispose_from_old_map(
+	void)
+{
+	return;
+}
+
+static void oddball_engine_player_added(
+	long player_index)
+{
+	struct player_datum *player = player_get(player_index);
+
+	return;
+}
+
+static void oddball_engine_game_ending(
+	void)
+{
+	return;
+}
+
+static void oddball_engine_game_starting(
+	void)
+{
+	return;
+}
+
+static void oddball_engine_statistics_append(
+	struct game_statistics *permanent_statistics,
+	struct game_statistics *game_statistics)
+{
+	return;
+}
+
+static void oddball_engine_handle_client_message(
+	long player_index,
+	void *encoded_message,
+	short encoded_message_size)
+{
+	return;
+}
+
+static void oddball_engine_handle_server_message(
+	void *encoded_message,
+	short encoded_message_size)
+{
+	return;
+}
+
+static void oddball_engine_pregame_post_rasterize(
+	void)
+{
+	return;
+}
+
+static void oddball_engine_post_rasterize(
+	void)
+{
+	return;
+}
+
 static void reset_ball(
 	long weapon_index)
 {
@@ -857,6 +472,80 @@ static void reset_ball(
 	SET_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag, FALSE);
 
 	return;
+}
+
+static void oddball_add_score(
+	long player_index)
+{
+	struct player_datum *player = player_get(player_index);
+
+	oddball_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)]++;
+	oddball_globals.team_score[player->team_index]++;
+
+	if (oddball_globals.score_to_win - oddball_globals.team_score[player->team_index] == 30 * TICKS_PER_SECOND)
+	{
+		if (game_engine_has_teams())
+		{
+			game_engine_play_multiplayer_sound(player->team_index ? _multiplayer_sound_blue_30_seconds : _multiplayer_sound_red_30_seconds);
+		}
+		else
+		{
+			game_engine_play_multiplayer_sound(_multiplayer_sound_30_seconds);
+		}
+	}
+
+	if (oddball_globals.score_to_win - oddball_globals.team_score[player->team_index] == 60 * TICKS_PER_SECOND)
+	{
+		if (game_engine_has_teams())
+		{
+			game_engine_play_multiplayer_sound(player->team_index ? _multiplayer_sound_blue_60_seconds : _multiplayer_sound_red_60_seconds);
+		}
+		else
+		{
+			game_engine_play_multiplayer_sound(_multiplayer_sound_60_seconds);
+		}
+	}
+
+	if (oddball_globals.team_score[player->team_index] >= oddball_globals.score_to_win)
+	{
+		game_engine_end_game();
+	}
+
+	return;
+}
+
+static void oddball_add_time_with_ball(
+	long player_index)
+{
+	struct player_datum *player = player_get(player_index);
+
+	if (game_engine_get_variant()->game_engine_variant.oddball.oddball_ball_type == _oddball_normal)
+	{
+		game_engine_state_message(player_index, oddball_message_you_have_the_ball_tick, player_index);
+	}
+
+	player->statistics.multiplayer_statistics.oddball_statistics.time_with_the_ball++;
+	oddball_add_score(player_index);
+
+	return;
+}
+
+static long player_ball_count(
+	long player_index)
+{
+	long count = 0;
+	long ball_count = game_engine_get_variant()->game_engine_variant.oddball.ball_spawn_count;
+	long ball_index;
+
+	for (ball_index = 0; ball_index < ball_count; ball_index++)
+	{
+		if (oddball_globals.current_ball_owner[ball_index] == player_index)
+		{
+			count++;
+		}
+	}
+
+	return count;
 }
 
 static void update_ball_ownership(
@@ -1056,6 +745,57 @@ static void oddball_engine_update(
 	return;
 }
 
+static void oddball_engine_player_damaged_player(
+	long killing_player_index,
+	long dead_player_index,
+	boolean friendly_fire)
+{
+	return;
+}
+
+boolean player_has_ball(
+	long player_index)
+{
+	long ball_count = game_engine_get_variant()->game_engine_variant.oddball.ball_spawn_count;
+	boolean result = FALSE;
+	long ball_index;
+
+	for (ball_index = 0; ball_index < ball_count; ball_index++)
+	{
+		if (oddball_globals.current_ball_owner[ball_index] == player_index)
+		{
+			result = TRUE;
+			break;
+		}
+	}
+
+	return result;
+}
+
+boolean ball_available(
+	void)
+{
+	long ball_count = game_engine_get_variant()->game_engine_variant.oddball.ball_spawn_count;
+	boolean result = FALSE;
+	long ball_index;
+
+	for (ball_index = 0; ball_index < ball_count; ball_index++)
+	{
+		if (oddball_globals.ball_spawn_timer[ball_index] != 0)
+		{
+			continue;
+		}
+
+		if (oddball_globals.current_ball_owner[ball_index] == NONE)
+		{
+			result = TRUE;
+			break;
+		}
+	}
+
+	return result;
+}
+
 static void oddball_engine_player_killed_player(
 	long killing_player_index,
 	long killing_object_index,
@@ -1135,6 +875,91 @@ static void oddball_engine_player_killed_player(
 	return;
 }
 
+static boolean oddball_engine_display_score(
+	long player_index,
+	long message,
+	long message_data,
+	word *buffer,
+	long buffer_size)
+{
+	struct player_datum *player = player_get(player_index);
+	boolean result = TRUE;
+	wchar_t *string;
+
+	switch (message)
+	{
+	case oddball_message_you_are_it:
+		multiplayer_game_text_get_string(string, _string_you_are_it);
+		ustrncpy(buffer, string, buffer_size);
+		break;
+	case oddball_message_ally_is_it:
+		multiplayer_game_text_get_string(string, _string_ally_is_it);
+		ustrncpy(buffer, string, buffer_size);
+		break;
+	case oddball_message_enemy_is_it:
+	{
+		struct player_datum *message_player = player_get(message_data);
+
+		multiplayer_game_text_get_string(string, _string_name_is_it);
+		usnprintf(buffer, buffer_size, string, message_player->name);
+		break;
+	}
+	case oddball_message_you_have_the_ball:
+		multiplayer_game_text_get_string(string, _string_you_have_the_ball);
+		ustrncpy(buffer, string, buffer_size);
+		break;
+	case oddball_message_ally_has_the_ball:
+		multiplayer_game_text_get_string(string, _string_an_ally_has_the_ball);
+		ustrncpy(buffer, string, buffer_size);
+		break;
+	case oddball_message_enemy_has_the_ball:
+	{
+		struct player_datum *message_player = player_get(message_data);
+
+		multiplayer_game_text_get_string(string, _string_name_has_the_ball);
+		usnprintf(buffer, buffer_size, string, message_player->name);
+		break;
+	}
+	case oddball_message_enemy_has_the_ball_tick:
+	case oddball_message_ally_has_the_ball_tick:
+	case oddball_message_you_have_the_ball_tick:
+	{
+		struct player_datum *message_player = player_get(message_data);
+		long seconds = oddball_globals.team_score[message_player->team_index] / TICKS_PER_SECOND;
+
+		if (message == oddball_message_you_have_the_ball_tick)
+		{
+			wchar_t *place_name = get_place_name(game_engine_get_place(player_index, _get_score_team));
+
+			multiplayer_game_text_get_string(string, _string_place_score_seconds);
+			usnprintf(buffer, buffer_size, string, place_name, seconds);
+		}
+		else if (message == oddball_message_ally_has_the_ball_tick)
+		{
+			multiplayer_game_text_get_string(string, _string_ally_name_has_the_ball_score_seconds);
+			usnprintf(buffer, buffer_size, string, message_player->name, seconds);
+		}
+		else if (message == oddball_message_enemy_has_the_ball_tick)
+		{
+			multiplayer_game_text_get_string(string, _string_enemy_name_has_the_ball_score_seconds);
+			usnprintf(buffer, buffer_size, string, message_player->name, seconds);
+		}
+		break;
+	}
+	default:
+		result = FALSE;
+		break;
+	}
+
+	return result;
+}
+
+static void oddball_engine_prespawn_player_update(
+	long player_index)
+{
+	return;
+}
+
 static boolean oddball_weapon_pickup(
 	long weapon_index,
 	long player_index)
@@ -1165,3 +990,179 @@ static boolean oddball_weapon_pickup(
 
 	return result;
 }
+
+static void oddball_weapon_drop(
+	long weapon_index)
+{
+	match_assert("c:\\halo\\SOURCE\\game\\game_engine_oddball.c", 968, weapon_is_flag(weapon_index));
+
+	return;
+}
+
+static long oddball_get_score(
+	long player_index,
+	enum get_score_type get_score_type)
+{
+	long score;
+	struct player_datum *player = player_get(player_index);
+
+	if (get_score_type == _get_score_team)
+	{
+		score = oddball_globals.team_score[player->team_index];
+	}
+	else
+	{
+		score = oddball_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)];
+	}
+
+	return score;
+}
+
+static boolean oddball_ball_transfer_by_killing(
+	void)
+{
+	boolean result;
+
+	switch (game_engine_get_variant()->game_engine_variant.oddball.oddball_ball_type)
+	{
+	case _oddball_magic:
+	case _oddball_terminator:
+		result = TRUE;
+		break;
+	default:
+		result = FALSE;
+		break;
+	}
+
+	return result;
+}
+
+static boolean accumulate_score_by_time(
+	void)
+{
+	boolean result;
+
+	switch (game_engine_get_variant()->game_engine_variant.oddball.oddball_ball_type)
+	{
+	case _oddball_terminator:
+		result = FALSE;
+		break;
+	default:
+		result = TRUE;
+		break;
+	}
+
+	return result;
+}
+
+static boolean terminator_scoring_rules(
+	void)
+{
+	boolean result;
+
+	switch (game_engine_get_variant()->game_engine_variant.oddball.oddball_ball_type)
+	{
+	case _oddball_terminator:
+		result = TRUE;
+		break;
+	default:
+		result = FALSE;
+		break;
+	}
+
+	return result;
+}
+
+static boolean oddball_test_flag(
+	long flag)
+{
+	boolean result = FALSE;
+
+	switch (flag)
+	{
+	case _game_engine_show_kills_with_score_bit:
+		result = terminator_scoring_rules();
+		break;
+	}
+
+	return result;
+}
+
+static boolean oddball_test_trait(
+	long player_index,
+	long trait)
+{
+	boolean result = FALSE;
+
+	if (trait != _game_trait_none)
+	{
+		if (player_has_ball(player_index))
+		{
+			result = trait == game_engine_get_variant()->game_engine_variant.oddball.trait_with_ball;
+		}
+		else
+		{
+			result = trait == game_engine_get_variant()->game_engine_variant.oddball.trait_without_ball;
+		}
+	}
+
+	return result;
+}
+
+static word *oddball_get_score_string(
+	long player_index,
+	word *buffer)
+{
+	long score = oddball_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)];
+
+	if (terminator_scoring_rules())
+	{
+		usprintf(buffer, L"%d", score);
+	}
+	else
+	{
+		ticks_to_unicode_time_string(score, 256, buffer);
+	}
+
+	return buffer;
+}
+
+static word *oddball_get_score_header_string(
+	word *buffer)
+{
+	short string_index;
+	wchar_t *string;
+
+	if (terminator_scoring_rules())
+	{
+		string_index = _string_score;
+	}
+	else
+	{
+		string_index = _string_time;
+	}
+
+	multiplayer_game_text_get_string(string, string_index);
+	ustrcpy(buffer, string);
+
+	return buffer;
+}
+
+static word *oddball_get_team_score_string(
+	long team_index,
+	word *buffer)
+{
+	long score = oddball_globals.team_score[team_index];
+
+	if (terminator_scoring_rules())
+	{
+		usprintf(buffer, L"%d", score);
+	}
+	else
+	{
+		ticks_to_unicode_time_string(score, 256, buffer);
+	}
+
+	return buffer;
+}
+

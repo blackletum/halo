@@ -409,6 +409,96 @@ static boolean unit_get_aim_assist_parameters(
 	return FALSE;
 }
 
+static short find_aim_assist_targets(
+	struct aim_assist_parameters const *parameters,
+	short position_cluster_index,
+	real_point3d const *position,
+	real_vector3d const *direction,
+	long ignore_object_index,
+	short ignore_team_index,
+	short maximum_target_count,
+	struct aim_assist_target *targets)
+{
+	short target_count = 0;
+	real distance = MAX(parameters->autoaim_distance, parameters->magnetism_distance);
+	real angle = MAX(parameters->autoaim_angle, parameters->magnetism_angle);
+
+	if (distance > 0.f && angle > 0.f)
+	{
+		real angle_sine = sine(angle);
+		real angle_cosine = cosine(angle);
+		short cluster_indices[MAXIMUM_CLUSTERS_PER_STRUCTURE];
+		short cluster_count = structure_clusters_in_cone(position_cluster_index, position, direction, distance, angle_sine, angle_cosine, NUMBEROF(cluster_indices), cluster_indices);
+		long object_indices[MAXIMUM_OBJECTS_PER_MAP];
+		short object_count = objects_in_clusters_by_indices(FLAG(_object_class_collideable), cluster_count, cluster_indices, NUMBEROF(object_indices), object_indices);
+		short index;
+
+		for (index = 0; index < object_count; index++)
+		{
+			long object_index = object_indices[index];
+
+			target_count += find_aim_assist_targets_recursive(parameters, object_index, position, direction, distance, angle_sine, angle_cosine, ignore_object_index, ignore_team_index, maximum_target_count - target_count, &targets[target_count]);
+			if (target_count >= maximum_target_count)
+			{
+				break;
+			}
+		}
+	}
+
+	return target_count;
+}
+
+static short find_aim_assist_targets_recursive(
+	struct aim_assist_parameters const *parameters,
+	long object_index,
+	real_point3d const *position,
+	real_vector3d const *direction,
+	real distance,
+	real angle_sine,
+	real angle_cosine,
+	long ignore_object_index,
+	short ignore_team_index,
+	short maximum_target_count,
+	struct aim_assist_target *targets)
+{
+	short target_count = 0;
+
+	do
+	{
+		struct object_datum *object = (struct object_datum *)object_get_and_verify_type(object_index, NONE);
+
+		if (TEST_FLAG(_object_mask_unit, object->object.type) &&
+			!TEST_FLAG(object->object.flags, _object_invisible_bit) &&
+			((struct unit_datum *)object_get_and_verify_type(object_index, _object_mask_unit))->unit.active_camouflage < 1.f &&
+			sphere_intersects_cone3d(&object->object.bounding_sphere_center, object->object.bounding_sphere_radius, position, direction, distance, angle_sine, angle_cosine))
+		{
+			if (TEST_FLAG(_object_mask_biped, object->object.type) &&
+				!TEST_FLAG(object->object.damage_flags, _object_dead_bit) &&
+				object_index != ignore_object_index &&
+				game_team_is_enemy(ignore_team_index, object->object.owner_team_index) &&
+				!TEST_FLAG(((struct unit_definition *)tag_get(BIPED_DEFINITION_TAG, object->definition_index))->unit.flags, _unit_ignored_by_autoaiming_bit))
+			{
+				struct aim_assist_target target;
+
+				if (aim_assist_compute_target(parameters, object_index, position, direction, &target) && target_count < maximum_target_count)
+				{
+					targets[target_count++] = target;
+				}
+			}
+
+			if (object->object.first_child_object_index != NONE && target_count < maximum_target_count)
+			{
+				target_count += find_aim_assist_targets_recursive(parameters, object->object.first_child_object_index, position, direction, distance, angle_sine, angle_cosine, ignore_object_index, ignore_team_index, maximum_target_count - target_count, &targets[target_count]);
+			}
+		}
+
+		object_index = object->object.next_object_index;
+	}
+	while (object_index != NONE && target_count < maximum_target_count);
+
+	return target_count;
+}
+
 static void object_compute_autoaim_target(
 	long object_index,
 	real_point3d const *position,
@@ -498,92 +588,3 @@ static int __cdecl compare_targets(
 	return DATUM_INDEX_TO_ABSOLUTE_INDEX(target0->object_index) - DATUM_INDEX_TO_ABSOLUTE_INDEX(target1->object_index);
 }
 
-static short find_aim_assist_targets_recursive(
-	struct aim_assist_parameters const *parameters,
-	long object_index,
-	real_point3d const *position,
-	real_vector3d const *direction,
-	real distance,
-	real angle_sine,
-	real angle_cosine,
-	long ignore_object_index,
-	short ignore_team_index,
-	short maximum_target_count,
-	struct aim_assist_target *targets)
-{
-	short target_count = 0;
-
-	do
-	{
-		struct object_datum *object = (struct object_datum *)object_get_and_verify_type(object_index, NONE);
-
-		if (TEST_FLAG(_object_mask_unit, object->object.type) &&
-			!TEST_FLAG(object->object.flags, _object_invisible_bit) &&
-			((struct unit_datum *)object_get_and_verify_type(object_index, _object_mask_unit))->unit.active_camouflage < 1.f &&
-			sphere_intersects_cone3d(&object->object.bounding_sphere_center, object->object.bounding_sphere_radius, position, direction, distance, angle_sine, angle_cosine))
-		{
-			if (TEST_FLAG(_object_mask_biped, object->object.type) &&
-				!TEST_FLAG(object->object.damage_flags, _object_dead_bit) &&
-				object_index != ignore_object_index &&
-				game_team_is_enemy(ignore_team_index, object->object.owner_team_index) &&
-				!TEST_FLAG(((struct unit_definition *)tag_get(BIPED_DEFINITION_TAG, object->definition_index))->unit.flags, _unit_ignored_by_autoaiming_bit))
-			{
-				struct aim_assist_target target;
-
-				if (aim_assist_compute_target(parameters, object_index, position, direction, &target) && target_count < maximum_target_count)
-				{
-					targets[target_count++] = target;
-				}
-			}
-
-			if (object->object.first_child_object_index != NONE && target_count < maximum_target_count)
-			{
-				target_count += find_aim_assist_targets_recursive(parameters, object->object.first_child_object_index, position, direction, distance, angle_sine, angle_cosine, ignore_object_index, ignore_team_index, maximum_target_count - target_count, &targets[target_count]);
-			}
-		}
-
-		object_index = object->object.next_object_index;
-	}
-	while (object_index != NONE && target_count < maximum_target_count);
-
-	return target_count;
-}
-
-static short find_aim_assist_targets(
-	struct aim_assist_parameters const *parameters,
-	short position_cluster_index,
-	real_point3d const *position,
-	real_vector3d const *direction,
-	long ignore_object_index,
-	short ignore_team_index,
-	short maximum_target_count,
-	struct aim_assist_target *targets)
-{
-	short target_count = 0;
-	real distance = MAX(parameters->autoaim_distance, parameters->magnetism_distance);
-	real angle = MAX(parameters->autoaim_angle, parameters->magnetism_angle);
-
-	if (distance > 0.f && angle > 0.f)
-	{
-		real angle_sine = sine(angle);
-		real angle_cosine = cosine(angle);
-		short cluster_indices[MAXIMUM_CLUSTERS_PER_STRUCTURE];
-		short cluster_count = structure_clusters_in_cone(position_cluster_index, position, direction, distance, angle_sine, angle_cosine, NUMBEROF(cluster_indices), cluster_indices);
-		long object_indices[MAXIMUM_OBJECTS_PER_MAP];
-		short object_count = objects_in_clusters_by_indices(FLAG(_object_class_collideable), cluster_count, cluster_indices, NUMBEROF(object_indices), object_indices);
-		short index;
-
-		for (index = 0; index < object_count; index++)
-		{
-			long object_index = object_indices[index];
-
-			target_count += find_aim_assist_targets_recursive(parameters, object_index, position, direction, distance, angle_sine, angle_cosine, ignore_object_index, ignore_team_index, maximum_target_count - target_count, &targets[target_count]);
-			if (target_count >= maximum_target_count)
-			{
-				break;
-			}
-		}
-	}
-
-	return target_count;
-}

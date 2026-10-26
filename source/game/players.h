@@ -236,6 +236,8 @@ void update_server_delete(void);
 boolean update_server_new(void);
 void update_server_start(void);
 void update_client_start(void);
+void update_client_delete(void);
+boolean update_client_new(void);
 long update_client_get_maximum_actions(void);
 long update_client_get_maximum_possible_server_time(void);
 void update_client_local_ticks(short ticks);

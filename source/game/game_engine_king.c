@@ -177,6 +177,8 @@ static void king_engine_player_killed_player(long killing_player_index, long kil
 static boolean king_engine_display_score(long player_index, long message, long message_data, word *buffer, long buffer_size);
 static void king_engine_prespawn_player_update(long player_index);
 static long king_get_score(long player_index, enum get_score_type get_score_type);
+void render_dynamic_quad_initialize(void);
+void render_dynamic_quad(struct model_vertex_uncompressed *verts, long shader_index, struct render_lighting const *lighting, struct render_animation const *animation, real u_scale, real v_scale);
 static word *king_get_score_string(long player_index, word *buffer);
 static word *king_get_score_header_string(word *buffer);
 static word *king_get_team_score_string(long team_index, word *buffer);
@@ -255,6 +257,27 @@ static void point3d_to_point2d(
 	}
 
 	return;
+}
+
+static long find_next_hill(
+	long hill_id)
+{
+	short start = random_range(0, king_engine_hill_count);
+	long next_hill;
+	short index;
+
+	for (index = 0; index < king_engine_hill_count; index++)
+	{
+		short hill_index = (index + start) % king_engine_hill_count;
+
+		if (hill_id != king_engine_hills[hill_index])
+		{
+			next_hill = king_engine_hills[hill_index];
+			break;
+		}
+	}
+
+	return next_hill;
 }
 
 static void find_hill(
@@ -339,6 +362,53 @@ static void find_hill(
 	return;
 }
 
+static boolean king_engine_initialize_for_new_map(
+	void)
+{
+	struct scenario *scenario = global_scenario_get();
+	short flag_index;
+
+	memset(&king_globals, 0, sizeof(king_globals));
+	king_engine_hill_count = 0;
+
+	for (flag_index = 0; flag_index < scenario->netgame_flags.count; flag_index++)
+	{
+		struct scenario_netgame_flag *flag = TAG_BLOCK_GET_ELEMENT(&scenario->netgame_flags, flag_index, struct scenario_netgame_flag);
+
+		if (flag->type == _netgame_flag_hill)
+		{
+			short hill_index;
+			boolean found = FALSE;
+
+			for (hill_index = 0; hill_index < king_engine_hill_count; hill_index++)
+			{
+				if (king_engine_hills[hill_index] == flag->team_index)
+				{
+					found = TRUE;
+					break;
+				}
+			}
+
+			if (!found)
+			{
+				king_engine_hills[king_engine_hill_count++] = flag->team_index;
+			}
+		}
+	}
+
+	king_globals.hill_id = 0;
+	king_globals.hill_timer = TICKS_PER_MINUTE;
+	king_globals.hill_previous_controller = NONE;
+	king_globals.hill_state = king_hill_uncontrolled;
+	find_hill();
+
+	match_assert("c:\\halo\\SOURCE\\game\\game_engine_king.c", 340, king_globals.hill_point_count != 0);
+
+	render_dynamic_quad_initialize();
+
+	return TRUE;
+}
+
 static void king_engine_dispose_from_old_map(
 	void)
 {
@@ -392,6 +462,81 @@ static void king_engine_handle_server_message(
 static void king_engine_pregame_post_rasterize(
 	void)
 {
+	return;
+}
+
+static void king_engine_post_rasterize(
+	void)
+{
+	long point_count;
+	real_point3d *points;
+	long index;
+	struct scenario *scenario;
+	struct game_globals *game_globals;
+	struct game_globals_multiplayer_information *multiplayer_information;
+	long shader_index;
+	real perimeter;
+	real length;
+	real u0;
+	real u1;
+	real inverse_perimeter;
+	real texture_scale;
+
+	scenario = global_scenario_get();
+	game_globals = scenario_get_game_globals();
+	multiplayer_information = TAG_BLOCK_GET_ELEMENT(&game_globals->multiplayer_information, 0, struct game_globals_multiplayer_information);
+	shader_index = multiplayer_information->hill_shader.index;
+	perimeter = 0.f;
+	point_count = king_globals.hill_point_count;
+	points = king_globals.hill_points;
+
+	for (index = 0; index < point_count; index++)
+	{
+		perimeter += distance3d(&points[index], &points[index + 1 == point_count ? 0 : index + 1]);
+	}
+
+	texture_scale = 1.f / floor(perimeter + 0.5f);
+	inverse_perimeter = 1.f / (perimeter * texture_scale);
+	u0 = 0.f;
+	length = 0.f;
+
+	for (index = 0; index < point_count; index++)
+	{
+		struct model_vertex_uncompressed render_points[4];
+		real distance;
+		real_vector3d v[2];
+		real_vector3d n;
+
+		distance = distance3d(&points[index], &points[index + 1 == point_count ? 0 : index + 1]);
+		u1 = inverse_perimeter * (length + distance);
+		length += distance;
+		memset(render_points, 0, sizeof(render_points));
+		render_points[1].position = points[index];
+		render_points[0].position = render_points[1].position;
+		render_points[3].position = points[index + 1 == point_count ? 0 : index + 1];
+		render_points[2].position = render_points[3].position;
+		render_points[1].position.z += 0.8f;
+		render_points[2].position.z += 0.8f;
+		vector_from_points3d(&render_points[0].position, &render_points[1].position, &v[0]);
+		vector_from_points3d(&render_points[1].position, &render_points[2].position, &v[1]);
+		cross_product3d(&v[0], &v[1], &n);
+		normalize3d(&n);
+		render_points[3].normal = n;
+		render_points[2].normal = render_points[3].normal;
+		render_points[1].normal = render_points[2].normal;
+		render_points[0].normal = render_points[1].normal;
+		render_points[0].texcoord.x = u0 * texture_scale;
+		render_points[0].texcoord.y = 1.f;
+		render_points[1].texcoord.x = u0 * texture_scale;
+		render_points[1].texcoord.y = 0.2f;
+		render_points[2].texcoord.x = u1 * texture_scale;
+		render_points[2].texcoord.y = 0.2f;
+		render_points[3].texcoord.x = u1 * texture_scale;
+		render_points[3].texcoord.y = 1.f;
+		u0 = u1;
+		render_dynamic_quad(render_points, shader_index, NULL, NULL, 1.f / texture_scale, 1.f);
+	}
+
 	return;
 }
 
@@ -627,6 +772,50 @@ static void king_calculate_hill_state(
 			game_engine_play_multiplayer_sound(_multiplayer_sound_hill_controlled);
 		}
 	}
+
+	return;
+}
+
+static void king_engine_update(
+	void)
+{
+	if (game_engine_can_score() && game_engine_get_variant()->game_engine_variant.king.moving_hill && --king_globals.hill_timer == 0)
+	{
+		king_globals.hill_timer = TICKS_PER_MINUTE;
+
+		while (TRUE)
+		{
+			king_globals.hill_id = find_next_hill(king_globals.hill_id);
+			find_hill();
+			game_engine_play_multiplayer_sound(_multiplayer_sound_hill_move);
+
+			if (king_globals.hill_point_count)
+			{
+				break;
+			}
+
+			error(_error_silent, "failed to find hill #%d most likely bad point placement", king_globals.hill_id);
+
+			if (king_globals.hill_id == 0)
+			{
+				break;
+			}
+		}
+	}
+
+	if (king_globals.hill_point_count > 0)
+	{
+		real_point3d position = king_globals.hill_center;
+		real vertical_offset = 0.f;
+
+		game_engine_set_goal_position(0, &position, vertical_offset, "crown_blue", NONE, NONE, NONE);
+	}
+	else
+	{
+		console_printf(FALSE, "FAILED TO FIND HILL");
+	}
+
+	king_calculate_hill_state();
 
 	return;
 }
@@ -875,189 +1064,3 @@ static boolean king_engine_goal_matches_player(
 	return (boolean)!king_globals.on_the_hill[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)];
 }
 
-static long find_next_hill(
-	long hill_id)
-{
-	short start = random_range(0, king_engine_hill_count);
-	long next_hill;
-	short index;
-
-	for (index = 0; index < king_engine_hill_count; index++)
-	{
-		short hill_index = (index + start) % king_engine_hill_count;
-
-		if (hill_id != king_engine_hills[hill_index])
-		{
-			next_hill = king_engine_hills[hill_index];
-			break;
-		}
-	}
-
-	return next_hill;
-}
-
-static boolean king_engine_initialize_for_new_map(
-	void)
-{
-	struct scenario *scenario = global_scenario_get();
-	short flag_index;
-
-	memset(&king_globals, 0, sizeof(king_globals));
-	king_engine_hill_count = 0;
-
-	for (flag_index = 0; flag_index < scenario->netgame_flags.count; flag_index++)
-	{
-		struct scenario_netgame_flag *flag = TAG_BLOCK_GET_ELEMENT(&scenario->netgame_flags, flag_index, struct scenario_netgame_flag);
-
-		if (flag->type == _netgame_flag_hill)
-		{
-			short hill_index;
-			boolean found = FALSE;
-
-			for (hill_index = 0; hill_index < king_engine_hill_count; hill_index++)
-			{
-				if (king_engine_hills[hill_index] == flag->team_index)
-				{
-					found = TRUE;
-					break;
-				}
-			}
-
-			if (!found)
-			{
-				king_engine_hills[king_engine_hill_count++] = flag->team_index;
-			}
-		}
-	}
-
-	king_globals.hill_id = 0;
-	king_globals.hill_timer = TICKS_PER_MINUTE;
-	king_globals.hill_previous_controller = NONE;
-	king_globals.hill_state = king_hill_uncontrolled;
-	find_hill();
-
-	match_assert("c:\\halo\\SOURCE\\game\\game_engine_king.c", 340, king_globals.hill_point_count != 0);
-
-	render_dynamic_quad_initialize();
-
-	return TRUE;
-}
-
-static void king_engine_post_rasterize(
-	void)
-{
-	long point_count;
-	real_point3d *points;
-	long index;
-	struct scenario *scenario;
-	struct game_globals *game_globals;
-	struct game_globals_multiplayer_information *multiplayer_information;
-	long shader_index;
-	real perimeter;
-	real length;
-	real u0;
-	real u1;
-	real inverse_perimeter;
-	real texture_scale;
-
-	scenario = global_scenario_get();
-	game_globals = scenario_get_game_globals();
-	multiplayer_information = TAG_BLOCK_GET_ELEMENT(&game_globals->multiplayer_information, 0, struct game_globals_multiplayer_information);
-	shader_index = multiplayer_information->hill_shader.index;
-	perimeter = 0.f;
-	point_count = king_globals.hill_point_count;
-	points = king_globals.hill_points;
-
-	for (index = 0; index < point_count; index++)
-	{
-		perimeter += distance3d(&points[index], &points[index + 1 == point_count ? 0 : index + 1]);
-	}
-
-	texture_scale = 1.f / floor(perimeter + 0.5f);
-	inverse_perimeter = 1.f / (perimeter * texture_scale);
-	u0 = 0.f;
-	length = 0.f;
-
-	for (index = 0; index < point_count; index++)
-	{
-		struct model_vertex_uncompressed render_points[4];
-		real distance;
-		real_vector3d v[2];
-		real_vector3d n;
-
-		distance = distance3d(&points[index], &points[index + 1 == point_count ? 0 : index + 1]);
-		u1 = inverse_perimeter * (length + distance);
-		length += distance;
-		memset(render_points, 0, sizeof(render_points));
-		render_points[1].position = points[index];
-		render_points[0].position = render_points[1].position;
-		render_points[3].position = points[index + 1 == point_count ? 0 : index + 1];
-		render_points[2].position = render_points[3].position;
-		render_points[1].position.z += 0.8f;
-		render_points[2].position.z += 0.8f;
-		vector_from_points3d(&render_points[0].position, &render_points[1].position, &v[0]);
-		vector_from_points3d(&render_points[1].position, &render_points[2].position, &v[1]);
-		cross_product3d(&v[0], &v[1], &n);
-		normalize3d(&n);
-		render_points[3].normal = n;
-		render_points[2].normal = render_points[3].normal;
-		render_points[1].normal = render_points[2].normal;
-		render_points[0].normal = render_points[1].normal;
-		render_points[0].texcoord.x = u0 * texture_scale;
-		render_points[0].texcoord.y = 1.f;
-		render_points[1].texcoord.x = u0 * texture_scale;
-		render_points[1].texcoord.y = 0.2f;
-		render_points[2].texcoord.x = u1 * texture_scale;
-		render_points[2].texcoord.y = 0.2f;
-		render_points[3].texcoord.x = u1 * texture_scale;
-		render_points[3].texcoord.y = 1.f;
-		u0 = u1;
-		render_dynamic_quad(render_points, shader_index, NULL, NULL, 1.f / texture_scale, 1.f);
-	}
-
-	return;
-}
-
-static void king_engine_update(
-	void)
-{
-	if (game_engine_can_score() && game_engine_get_variant()->game_engine_variant.king.moving_hill && --king_globals.hill_timer == 0)
-	{
-		king_globals.hill_timer = TICKS_PER_MINUTE;
-
-		while (TRUE)
-		{
-			king_globals.hill_id = find_next_hill(king_globals.hill_id);
-			find_hill();
-			game_engine_play_multiplayer_sound(_multiplayer_sound_hill_move);
-
-			if (king_globals.hill_point_count)
-			{
-				break;
-			}
-
-			error(_error_silent, "failed to find hill #%d most likely bad point placement", king_globals.hill_id);
-
-			if (king_globals.hill_id == 0)
-			{
-				break;
-			}
-		}
-	}
-
-	if (king_globals.hill_point_count > 0)
-	{
-		real_point3d position = king_globals.hill_center;
-		real vertical_offset = 0.f;
-
-		game_engine_set_goal_position(0, &position, vertical_offset, "crown_blue", NONE, NONE, NONE);
-	}
-	else
-	{
-		console_printf(FALSE, "FAILED TO FIND HILL");
-	}
-
-	king_calculate_hill_state();
-
-	return;
-}

@@ -332,6 +332,111 @@ static void ctf_single_flag_what_is_up_message(
 	return;
 }
 
+static boolean ctf_engine_initialize_for_new_map(
+	void)
+{
+	struct scenario *scenario;
+	long team_index;
+	short starting_location_count;
+	short starting_location_index;
+
+	if (!game_engine_get_variant()->universal_variant.teams)
+	{
+		error(_error_silent, "ctf started up without teams");
+	}
+
+	memset(&ctf_globals, 0, sizeof(ctf_globals));
+	ctf_globals.weapon_index[0] = NONE;
+	ctf_globals.weapon_index[1] = NONE;
+	timeout_for_endgame_sound = 2 * TICKS_PER_SECOND;
+	scenario = global_scenario_get();
+
+	for (team_index = 0; team_index < NUMBER_OF_CTF_TEAMS; team_index++)
+	{
+		long flag_team_index;
+		long flag_index = find_netgame_flag(NULL, 0.f, 0.f, _netgame_flag_ctf_flag, (short)team_index);
+
+		ctf_globals.score[team_index] = 0;
+		flag_team_index = team_index;
+
+		if (game_engine_get_variant()->game_engine_variant.ctf.assault)
+		{
+			flag_team_index = OTHER_TEAM(team_index);
+		}
+
+		ctf_globals.flags[flag_team_index] = NULL;
+
+		if (flag_index != NONE)
+		{
+			ctf_globals.flags[flag_team_index] = TAG_BLOCK_GET_ELEMENT(&scenario->netgame_flags, flag_index, struct scenario_netgame_flag);
+		}
+
+		if (!ctf_globals.flags[flag_team_index])
+		{
+			error(_error_silent, "failed to find one of the ctf flags");
+		}
+	}
+
+	if (game_engine_get_variant()->game_engine_variant.ctf.single_flag_time > 0)
+	{
+		long flag_to_create = random_range(0, NUMBER_OF_CTF_TEAMS);
+
+		match_assert("c:\\halo\\SOURCE\\game\\game_engine_ctf.c", 263, (flag_to_create >= 0) && (flag_to_create <= 1));
+
+		create_the_flag(flag_to_create);
+		ctf_single_flag_what_is_up_message(flag_to_create);
+		ctf_globals.flag_swap_timer = game_engine_get_variant()->game_engine_variant.ctf.single_flag_time;
+	}
+	else
+	{
+		for (team_index = 0; team_index < NUMBER_OF_CTF_TEAMS; team_index++)
+		{
+			create_the_flag(team_index);
+		}
+	}
+
+	ctf_globals.score_to_win = game_engine_get_variant()->universal_variant.score_to_win;
+	starting_location_count = player_get_starting_location_count();
+
+	for (starting_location_index = 0; starting_location_index < starting_location_count; starting_location_index++)
+	{
+		struct scenario_player *starting_location = player_get_starting_location(starting_location_index);
+
+		if (starting_location->team_index != 0 && starting_location->team_index != 1)
+		{
+			error(_error_silent, "NETGAME_FLAG_WARNING starting location %d bad team index %d", starting_location_index, starting_location->team_index);
+			continue;
+		}
+
+		if (match_game_type(_game_engine_ctf, NUMBEROF(starting_location->game_type), starting_location->game_type))
+		{
+			boolean assault = game_engine_get_variant()->game_engine_variant.ctf.assault > 0;
+			boolean too_close = FALSE;
+			long own_team_index = starting_location->team_index % NUMBER_OF_CTF_TEAMS;
+			long enemy_team_index = OTHER_TEAM(own_team_index);
+			real own_flag_distance = distance_squared3d(&ctf_globals.flags[own_team_index]->position, &starting_location->position);
+			real enemy_flag_distance = distance_squared3d(&ctf_globals.flags[enemy_team_index]->position, &starting_location->position);
+
+			if (assault)
+			{
+				too_close = own_flag_distance < enemy_flag_distance;
+			}
+			else
+			{
+				too_close = own_flag_distance > enemy_flag_distance;
+			}
+
+			if (too_close)
+			{
+				error(_error_silent, "NETGAME_FLAG_WARNING starting location %d team %d, too close to enemy flag", starting_location_index, starting_location->team_index);
+				starting_location->team_index = 3;
+			}
+		}
+	}
+
+	return TRUE;
+}
+
 static void ctf_engine_dispose_from_old_map(
 	void)
 {
@@ -394,6 +499,37 @@ static void ctf_engine_post_rasterize(
 	return;
 }
 
+static void weapon_reset_flag(
+	long weapon_index)
+{
+	struct weapon_datum *weapon = weapon_get(weapon_index);
+
+	ctf_set_flag_warning(weapon->object.owner_team_index, FALSE);
+
+	if (ctf_globals.flags[weapon->object.owner_team_index])
+	{
+		game_engine_flag_reset(weapon_index, &ctf_globals.flags[weapon->object.owner_team_index]->position);
+		SET_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag, FALSE);
+	}
+
+	return;
+}
+
+static void player_reset_flag(
+	long player_index,
+	long weapon_index)
+{
+	struct player_datum *player = player_get(player_index);
+	long unit_index = player->unit_index;
+
+	match_assert("c:\\halo\\SOURCE\\game\\game_engine_ctf.c", 423, NONE != unit_index);
+
+	unit_drop_current_weapon(unit_index, TRUE);
+	weapon_reset_flag(weapon_index);
+
+	return;
+}
+
 static void player_score(
 	long player_index,
 	long team_index)
@@ -412,6 +548,24 @@ static void player_score(
 	return;
 }
 
+static boolean in_scoring_range(
+	real_point3d *location,
+	real distance,
+	long team_index)
+{
+	boolean result = FALSE;
+
+	if (location && ctf_globals.flags[team_index])
+	{
+		if (distance_squared3d(location, &ctf_globals.flags[team_index]->position) < distance * distance)
+		{
+			result = TRUE;
+		}
+	}
+
+	return result;
+}
+
 static void ctf_flag_failure_sound(
 	long player_index)
 {
@@ -423,6 +577,79 @@ static void ctf_flag_failure_sound(
 	{
 		game_engine_play_multiplayer_sound(_multiplayer_sound_flag_failure);
 		ctf_globals.non_deterministic_next_flag_failure_time = game_time_get() + flag_failure_sound_delay;
+	}
+
+	return;
+}
+
+static void ctf_engine_player_update(
+	long player_index)
+{
+	struct player_datum *player = player_get(player_index);
+	long unit_index;
+	struct unit_datum *unit;
+	long weapon_index;
+	struct weapon_datum *weapon;
+
+	if (game_engine_player_has_flag(player_index))
+	{
+		game_engine_player_depower_active_camo(player_index);
+	}
+
+	unit_index = player->unit_index;
+	if (unit_index == NONE)
+	{
+		return;
+	}
+
+	unit = unit_get(unit_index);
+	if (unit->unit.current_weapon_index == NONE)
+	{
+		return;
+	}
+
+	weapon_index = unit->unit.weapon_object_indices[unit->unit.current_weapon_index];
+	if (weapon_index == NONE)
+	{
+		return;
+	}
+
+	weapon = weapon_get(weapon_index);
+	if (game_engine_can_score() && weapon_is_flag(weapon_index))
+	{
+		real scoring_distance = 1.f;
+
+		match_assert("c:\\halo\\SOURCE\\game\\game_engine_ctf.c", 532, weapon->object.owner_team_index != player->team_index);
+
+		if (in_scoring_range(&unit->object.position, scoring_distance, player->team_index))
+		{
+			boolean can_score = TRUE;
+
+			if (game_engine_get_variant()->game_engine_variant.ctf.flag_at_home_to_score)
+			{
+				if (game_engine_get_variant()->game_engine_variant.ctf.single_flag_time)
+				{
+					can_score = TRUE;
+				}
+				else
+				{
+					struct weapon_datum *flag = weapon_get(ctf_globals.weapon_index[player->team_index]);
+
+					can_score = !TEST_FLAG(flag->weapon.flags, _weapon_multiplayer_flag);
+				}
+			}
+
+			if (can_score)
+			{
+				player_score(player_index, player->team_index);
+				player_reset_flag(player_index, weapon_index);
+				game_engine_get_variant();
+			}
+			else
+			{
+				ctf_flag_failure_sound(player_index);
+			}
+		}
 	}
 
 	return;
@@ -447,6 +674,114 @@ static long get_player_with_this_flag(
 	}
 
 	return player_index;
+}
+
+static void ctf_engine_weapon_update(
+	long weapon_index,
+	struct weapon_datum *weapon)
+{
+	long flag_reset_delay = 17 * TICKS_PER_SECOND;
+	long player_index;
+	long team_index;
+	long other_team_index;
+	real_point3d position;
+	real vertical_offset;
+
+	match_assert("c:\\halo\\SOURCE\\game\\game_engine_ctf.c", 609, weapon_is_flag(weapon_index));
+
+	if (game_engine_get_variant()->game_engine_variant.ctf.single_flag_time > 0)
+	{
+		if (ctf_globals.flag_swap_timer > 0)
+		{
+			ctf_globals.flag_swap_timer--;
+		}
+
+		if (ctf_globals.flag_swap_timer == 0 && !TEST_FLAG(weapon->item.flags, _item_in_unit_inventory_bit))
+		{
+			game_show_score(NONE, ctf_message_time_expired);
+			ctf_set_flag_warning(0, FALSE);
+			ctf_set_flag_warning(1, FALSE);
+			ctf_globals.weapon_index[weapon->object.owner_team_index] = NONE;
+			game_engine_clear_goal_position(0);
+			game_engine_clear_goal_position(1);
+			weapon->object.owner_team_index = OTHER_TEAM(weapon->object.owner_team_index);
+			game_engine_play_multiplayer_sound(weapon->object.owner_team_index ? _multiplayer_sound_red_team_ctf : _multiplayer_sound_blue_team_ctf);
+			weapon_reset_flag(weapon_index);
+			game_engine_clear_goal_position(2);
+			game_engine_clear_goal_position(3);
+			ctf_globals.flag_swap_timer = game_engine_get_variant()->game_engine_variant.ctf.single_flag_time;
+			ctf_single_flag_what_is_up_message(weapon->object.owner_team_index);
+		}
+	}
+
+	if ((unsigned long)(game_time_get() - weapon->item.last_owned_time) > flag_reset_delay && weapon_is_flag(weapon_index))
+	{
+		boolean connected = TEST_FLAG(weapon->object.flags, _object_connected_to_map_bit);
+		boolean attached = weapon->object.parent_object_index != NONE;
+
+		if (connected && !attached)
+		{
+			long flag_team_index = weapon->object.owner_team_index;
+			long enemy_team_index = OTHER_TEAM(weapon->object.owner_team_index);
+
+			if (TEST_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag))
+			{
+				game_engine_play_multiplayer_sound(flag_team_index ? _multiplayer_sound_ctf_blue_returned_flag : _multiplayer_sound_ctf_red_returned_flag);
+				ctf_set_flag_warning(weapon->object.owner_team_index, FALSE);
+				game_show_score_team(flag_team_index, ctf_message_your_flag_was_returned);
+				game_show_score_team(enemy_team_index, ctf_message_enemy_flag_was_returned);
+			}
+
+			weapon_reset_flag(weapon_index);
+		}
+	}
+
+	player_index = get_player_with_this_flag(weapon_index);
+	team_index = weapon->object.owner_team_index;
+	other_team_index = OTHER_TEAM(team_index);
+	vertical_offset = 0.f;
+	item_get_position_even_if_in_inventory(weapon_index, &position);
+	game_engine_set_goal_position((short)team_index, &position, vertical_offset, "flag_blue", NONE, (short)other_team_index, player_index);
+
+	if (player_index != NONE)
+	{
+		position = ctf_globals.flags[other_team_index]->position;
+		position.y += 0.5f;
+		game_engine_set_goal_position((short)(team_index + 2), &position, vertical_offset, "default", player_index, NONE, NONE);
+	}
+	else
+	{
+		game_engine_clear_goal_position((short)(team_index + 2));
+	}
+
+	return;
+}
+
+static void ctf_engine_update(
+	void)
+{
+	boolean game_over = FALSE;
+	long team_index;
+
+	for (team_index = 0; team_index < NUMBER_OF_CTF_TEAMS; team_index++)
+	{
+		if (ctf_globals.score[team_index] >= ctf_globals.score_to_win)
+		{
+			game_over = TRUE;
+		}
+	}
+
+	if (game_over)
+	{
+		game_engine_end_game();
+	}
+
+	ctf_state_message_update_warning(0);
+	ctf_state_message_update_warning(1);
+	ctf_sound_update_warning(0);
+	ctf_sound_update_warning(1);
+
+	return;
 }
 
 static boolean ctf_engine_allow_pick_up(
@@ -614,6 +949,67 @@ static void ctf_set_flag_warning(
 	return;
 }
 
+static boolean ctf_weapon_pickup(
+	long weapon_index,
+	long player_index)
+{
+	boolean result = TRUE;
+	struct weapon_datum *weapon = weapon_get(weapon_index);
+
+	match_assert("c:\\halo\\SOURCE\\game\\game_engine_ctf.c", 974, weapon_is_flag(weapon_index));
+
+	if (player_index != NONE)
+	{
+		struct player_datum *player = player_get(player_index);
+
+		if (weapon->object.owner_team_index == player->team_index)
+		{
+			if (!game_engine_get_variant()->game_engine_variant.ctf.flag_must_reset)
+			{
+				if (TEST_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag) && game_engine_can_score())
+				{
+					ctf_set_flag_warning(weapon->object.owner_team_index, FALSE);
+					player->statistics.multiplayer_statistics.ctf_statistics.flag_returns++;
+					game_show_score_you_ally_enemy(player_index, ctf_message_you_returned_the_flag, ctf_message_good_guys_returned_the_flag, ctf_message_enemy_returned_the_flag, player_index);
+					game_engine_play_multiplayer_sound(player->team_index ? _multiplayer_sound_ctf_blue_returned_flag : _multiplayer_sound_ctf_red_returned_flag);
+				}
+
+				weapon_reset_flag(weapon_index);
+			}
+			else if (TEST_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag))
+			{
+				ctf_flag_failure_sound(player_index);
+			}
+
+			result = FALSE;
+		}
+		else
+		{
+			if (TEST_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag))
+			{
+			}
+			else if (game_engine_can_score())
+			{
+				player->statistics.multiplayer_statistics.ctf_statistics.flag_grabs++;
+
+				if (game_engine_get_variant()->game_engine_variant.ctf.assault)
+				{
+				}
+				else
+				{
+					game_engine_play_multiplayer_sound(player->team_index ? _multiplayer_sound_ctf_blue_took_flag : _multiplayer_sound_ctf_red_took_flag);
+					ctf_set_flag_warning(weapon->object.owner_team_index, TRUE);
+					game_show_score_you_ally_enemy(player_index, NONE, ctf_message_good_guys_have_the_flag, ctf_message_enemy_has_the_flag, player_index);
+				}
+			}
+
+			SET_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag, TRUE);
+		}
+	}
+
+	return result;
+}
+
 static void ctf_weapon_drop(
 	long weapon_index)
 {
@@ -685,402 +1081,6 @@ static word *ctf_get_team_score_string(
 	usprintf(buffer, L"%d", ctf_globals.score[team_index]);
 
 	return buffer;
-}
-
-static boolean ctf_engine_initialize_for_new_map(
-	void)
-{
-	struct scenario *scenario;
-	long team_index;
-	short starting_location_count;
-	short starting_location_index;
-
-	if (!game_engine_get_variant()->universal_variant.teams)
-	{
-		error(_error_silent, "ctf started up without teams");
-	}
-
-	memset(&ctf_globals, 0, sizeof(ctf_globals));
-	ctf_globals.weapon_index[0] = NONE;
-	ctf_globals.weapon_index[1] = NONE;
-	timeout_for_endgame_sound = 2 * TICKS_PER_SECOND;
-	scenario = global_scenario_get();
-
-	for (team_index = 0; team_index < NUMBER_OF_CTF_TEAMS; team_index++)
-	{
-		long flag_team_index;
-		long flag_index = find_netgame_flag(NULL, 0.f, 0.f, _netgame_flag_ctf_flag, (short)team_index);
-
-		ctf_globals.score[team_index] = 0;
-		flag_team_index = team_index;
-
-		if (game_engine_get_variant()->game_engine_variant.ctf.assault)
-		{
-			flag_team_index = OTHER_TEAM(team_index);
-		}
-
-		ctf_globals.flags[flag_team_index] = NULL;
-
-		if (flag_index != NONE)
-		{
-			ctf_globals.flags[flag_team_index] = TAG_BLOCK_GET_ELEMENT(&scenario->netgame_flags, flag_index, struct scenario_netgame_flag);
-		}
-
-		if (!ctf_globals.flags[flag_team_index])
-		{
-			error(_error_silent, "failed to find one of the ctf flags");
-		}
-	}
-
-	if (game_engine_get_variant()->game_engine_variant.ctf.single_flag_time > 0)
-	{
-		long flag_to_create = random_range(0, NUMBER_OF_CTF_TEAMS);
-
-		match_assert("c:\\halo\\SOURCE\\game\\game_engine_ctf.c", 263, (flag_to_create >= 0) && (flag_to_create <= 1));
-
-		create_the_flag(flag_to_create);
-		ctf_single_flag_what_is_up_message(flag_to_create);
-		ctf_globals.flag_swap_timer = game_engine_get_variant()->game_engine_variant.ctf.single_flag_time;
-	}
-	else
-	{
-		for (team_index = 0; team_index < NUMBER_OF_CTF_TEAMS; team_index++)
-		{
-			create_the_flag(team_index);
-		}
-	}
-
-	ctf_globals.score_to_win = game_engine_get_variant()->universal_variant.score_to_win;
-	starting_location_count = player_get_starting_location_count();
-
-	for (starting_location_index = 0; starting_location_index < starting_location_count; starting_location_index++)
-	{
-		struct scenario_player *starting_location = player_get_starting_location(starting_location_index);
-
-		if (starting_location->team_index != 0 && starting_location->team_index != 1)
-		{
-			error(_error_silent, "NETGAME_FLAG_WARNING starting location %d bad team index %d", starting_location_index, starting_location->team_index);
-			continue;
-		}
-
-		if (match_game_type(_game_engine_ctf, NUMBEROF(starting_location->game_type), starting_location->game_type))
-		{
-			boolean assault = game_engine_get_variant()->game_engine_variant.ctf.assault > 0;
-			boolean too_close = FALSE;
-			long own_team_index = starting_location->team_index % NUMBER_OF_CTF_TEAMS;
-			long enemy_team_index = OTHER_TEAM(own_team_index);
-			real own_flag_distance = distance_squared3d(&ctf_globals.flags[own_team_index]->position, &starting_location->position);
-			real enemy_flag_distance = distance_squared3d(&ctf_globals.flags[enemy_team_index]->position, &starting_location->position);
-
-			if (assault)
-			{
-				too_close = own_flag_distance < enemy_flag_distance;
-			}
-			else
-			{
-				too_close = own_flag_distance > enemy_flag_distance;
-			}
-
-			if (too_close)
-			{
-				error(_error_silent, "NETGAME_FLAG_WARNING starting location %d team %d, too close to enemy flag", starting_location_index, starting_location->team_index);
-				starting_location->team_index = 3;
-			}
-		}
-	}
-
-	return TRUE;
-}
-
-static void weapon_reset_flag(
-	long weapon_index)
-{
-	struct weapon_datum *weapon = weapon_get(weapon_index);
-
-	ctf_set_flag_warning(weapon->object.owner_team_index, FALSE);
-
-	if (ctf_globals.flags[weapon->object.owner_team_index])
-	{
-		game_engine_flag_reset(weapon_index, &ctf_globals.flags[weapon->object.owner_team_index]->position);
-		SET_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag, FALSE);
-	}
-
-	return;
-}
-
-static void player_reset_flag(
-	long player_index,
-	long weapon_index)
-{
-	struct player_datum *player = player_get(player_index);
-	long unit_index = player->unit_index;
-
-	match_assert("c:\\halo\\SOURCE\\game\\game_engine_ctf.c", 423, NONE != unit_index);
-
-	unit_drop_current_weapon(unit_index, TRUE);
-	weapon_reset_flag(weapon_index);
-
-	return;
-}
-
-static boolean in_scoring_range(
-	real_point3d *location,
-	real distance,
-	long team_index)
-{
-	boolean result = FALSE;
-
-	if (location && ctf_globals.flags[team_index])
-	{
-		if (distance_squared3d(location, &ctf_globals.flags[team_index]->position) < distance * distance)
-		{
-			result = TRUE;
-		}
-	}
-
-	return result;
-}
-
-static void ctf_engine_player_update(
-	long player_index)
-{
-	struct player_datum *player = player_get(player_index);
-	long unit_index;
-	struct unit_datum *unit;
-	long weapon_index;
-	struct weapon_datum *weapon;
-
-	if (game_engine_player_has_flag(player_index))
-	{
-		game_engine_player_depower_active_camo(player_index);
-	}
-
-	unit_index = player->unit_index;
-	if (unit_index == NONE)
-	{
-		return;
-	}
-
-	unit = unit_get(unit_index);
-	if (unit->unit.current_weapon_index == NONE)
-	{
-		return;
-	}
-
-	weapon_index = unit->unit.weapon_object_indices[unit->unit.current_weapon_index];
-	if (weapon_index == NONE)
-	{
-		return;
-	}
-
-	weapon = weapon_get(weapon_index);
-	if (game_engine_can_score() && weapon_is_flag(weapon_index))
-	{
-		real scoring_distance = 1.f;
-
-		match_assert("c:\\halo\\SOURCE\\game\\game_engine_ctf.c", 532, weapon->object.owner_team_index != player->team_index);
-
-		if (in_scoring_range(&unit->object.position, scoring_distance, player->team_index))
-		{
-			boolean can_score = TRUE;
-
-			if (game_engine_get_variant()->game_engine_variant.ctf.flag_at_home_to_score)
-			{
-				if (game_engine_get_variant()->game_engine_variant.ctf.single_flag_time)
-				{
-					can_score = TRUE;
-				}
-				else
-				{
-					struct weapon_datum *flag = weapon_get(ctf_globals.weapon_index[player->team_index]);
-
-					can_score = !TEST_FLAG(flag->weapon.flags, _weapon_multiplayer_flag);
-				}
-			}
-
-			if (can_score)
-			{
-				player_score(player_index, player->team_index);
-				player_reset_flag(player_index, weapon_index);
-				game_engine_get_variant();
-			}
-			else
-			{
-				ctf_flag_failure_sound(player_index);
-			}
-		}
-	}
-
-	return;
-}
-
-static void ctf_engine_weapon_update(
-	long weapon_index,
-	struct weapon_datum *weapon)
-{
-	long flag_reset_delay = 17 * TICKS_PER_SECOND;
-	long player_index;
-	long team_index;
-	long other_team_index;
-	real_point3d position;
-	real vertical_offset;
-
-	match_assert("c:\\halo\\SOURCE\\game\\game_engine_ctf.c", 609, weapon_is_flag(weapon_index));
-
-	if (game_engine_get_variant()->game_engine_variant.ctf.single_flag_time > 0)
-	{
-		if (ctf_globals.flag_swap_timer > 0)
-		{
-			ctf_globals.flag_swap_timer--;
-		}
-
-		if (ctf_globals.flag_swap_timer == 0 && !TEST_FLAG(weapon->item.flags, _item_in_unit_inventory_bit))
-		{
-			game_show_score(NONE, ctf_message_time_expired);
-			ctf_set_flag_warning(0, FALSE);
-			ctf_set_flag_warning(1, FALSE);
-			ctf_globals.weapon_index[weapon->object.owner_team_index] = NONE;
-			game_engine_clear_goal_position(0);
-			game_engine_clear_goal_position(1);
-			weapon->object.owner_team_index = OTHER_TEAM(weapon->object.owner_team_index);
-			game_engine_play_multiplayer_sound(weapon->object.owner_team_index ? _multiplayer_sound_red_team_ctf : _multiplayer_sound_blue_team_ctf);
-			weapon_reset_flag(weapon_index);
-			game_engine_clear_goal_position(2);
-			game_engine_clear_goal_position(3);
-			ctf_globals.flag_swap_timer = game_engine_get_variant()->game_engine_variant.ctf.single_flag_time;
-			ctf_single_flag_what_is_up_message(weapon->object.owner_team_index);
-		}
-	}
-
-	if ((unsigned long)(game_time_get() - weapon->item.last_owned_time) > flag_reset_delay && weapon_is_flag(weapon_index))
-	{
-		boolean connected = TEST_FLAG(weapon->object.flags, _object_connected_to_map_bit);
-		boolean attached = weapon->object.parent_object_index != NONE;
-
-		if (connected && !attached)
-		{
-			long flag_team_index = weapon->object.owner_team_index;
-			long enemy_team_index = OTHER_TEAM(weapon->object.owner_team_index);
-
-			if (TEST_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag))
-			{
-				game_engine_play_multiplayer_sound(flag_team_index ? _multiplayer_sound_ctf_blue_returned_flag : _multiplayer_sound_ctf_red_returned_flag);
-				ctf_set_flag_warning(weapon->object.owner_team_index, FALSE);
-				game_show_score_team(flag_team_index, ctf_message_your_flag_was_returned);
-				game_show_score_team(enemy_team_index, ctf_message_enemy_flag_was_returned);
-			}
-
-			weapon_reset_flag(weapon_index);
-		}
-	}
-
-	player_index = get_player_with_this_flag(weapon_index);
-	team_index = weapon->object.owner_team_index;
-	other_team_index = OTHER_TEAM(team_index);
-	vertical_offset = 0.f;
-	item_get_position_even_if_in_inventory(weapon_index, &position);
-	game_engine_set_goal_position((short)team_index, &position, vertical_offset, "flag_blue", NONE, (short)other_team_index, player_index);
-
-	if (player_index != NONE)
-	{
-		position = ctf_globals.flags[other_team_index]->position;
-		position.y += 0.5f;
-		game_engine_set_goal_position((short)(team_index + 2), &position, vertical_offset, "default", player_index, NONE, NONE);
-	}
-	else
-	{
-		game_engine_clear_goal_position((short)(team_index + 2));
-	}
-
-	return;
-}
-
-static void ctf_engine_update(
-	void)
-{
-	boolean game_over = FALSE;
-	long team_index;
-
-	for (team_index = 0; team_index < NUMBER_OF_CTF_TEAMS; team_index++)
-	{
-		if (ctf_globals.score[team_index] >= ctf_globals.score_to_win)
-		{
-			game_over = TRUE;
-		}
-	}
-
-	if (game_over)
-	{
-		game_engine_end_game();
-	}
-
-	ctf_state_message_update_warning(0);
-	ctf_state_message_update_warning(1);
-	ctf_sound_update_warning(0);
-	ctf_sound_update_warning(1);
-
-	return;
-}
-
-static boolean ctf_weapon_pickup(
-	long weapon_index,
-	long player_index)
-{
-	boolean result = TRUE;
-	struct weapon_datum *weapon = weapon_get(weapon_index);
-
-	match_assert("c:\\halo\\SOURCE\\game\\game_engine_ctf.c", 974, weapon_is_flag(weapon_index));
-
-	if (player_index != NONE)
-	{
-		struct player_datum *player = player_get(player_index);
-
-		if (weapon->object.owner_team_index == player->team_index)
-		{
-			if (!game_engine_get_variant()->game_engine_variant.ctf.flag_must_reset)
-			{
-				if (TEST_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag) && game_engine_can_score())
-				{
-					ctf_set_flag_warning(weapon->object.owner_team_index, FALSE);
-					player->statistics.multiplayer_statistics.ctf_statistics.flag_returns++;
-					game_show_score_you_ally_enemy(player_index, ctf_message_you_returned_the_flag, ctf_message_good_guys_returned_the_flag, ctf_message_enemy_returned_the_flag, player_index);
-					game_engine_play_multiplayer_sound(player->team_index ? _multiplayer_sound_ctf_blue_returned_flag : _multiplayer_sound_ctf_red_returned_flag);
-				}
-
-				weapon_reset_flag(weapon_index);
-			}
-			else if (TEST_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag))
-			{
-				ctf_flag_failure_sound(player_index);
-			}
-
-			result = FALSE;
-		}
-		else
-		{
-			if (TEST_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag))
-			{
-			}
-			else if (game_engine_can_score())
-			{
-				player->statistics.multiplayer_statistics.ctf_statistics.flag_grabs++;
-
-				if (game_engine_get_variant()->game_engine_variant.ctf.assault)
-				{
-				}
-				else
-				{
-					game_engine_play_multiplayer_sound(player->team_index ? _multiplayer_sound_ctf_blue_took_flag : _multiplayer_sound_ctf_red_took_flag);
-					ctf_set_flag_warning(weapon->object.owner_team_index, TRUE);
-					game_show_score_you_ally_enemy(player_index, NONE, ctf_message_good_guys_have_the_flag, ctf_message_enemy_has_the_flag, player_index);
-				}
-			}
-
-			SET_FLAG(weapon->weapon.flags, _weapon_multiplayer_flag, TRUE);
-		}
-	}
-
-	return result;
 }
 
 static real ctf_engine_starting_location_rating(

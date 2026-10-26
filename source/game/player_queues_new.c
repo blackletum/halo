@@ -192,12 +192,194 @@ static struct _update_server_globals update_server_globals;
 
 /* ---------- public code */
 
+void update_queues_reset_and_fill_with_lies(
+	void)
+{
+	if (update_server_globals.initialized)
+	{
+		update_server_globals.next_update_number_to_build = 0;
+		memset(update_server_globals.updates, 0, sizeof(update_server_globals.updates));
+	}
+
+	if (update_client_globals.initialized)
+	{
+		long game_time;
+		long update_number;
+		long update_index;
+
+		memset(update_client_globals.updates, NONE, sizeof(update_client_globals.updates));
+		memset(&update_client_globals.saved_action_collection, 0, sizeof(update_client_globals.saved_action_collection));
+		update_client_globals.latest_update_number_received = NONE;
+		update_client_globals.next_update_number_to_dequeue = 0;
+		game_time = game_time_get();
+
+		for (update_number = FLOOR(game_time - MAXIMUM_NUMBER_OF_CLIENT_UPDATES, 0), update_index = 0; update_number < game_time; update_index++, update_number++)
+		{
+			update_client_globals.updates[update_index].update_number = update_number;
+			update_client_globals.updates[update_index].data.number_of_actions = 1;
+			memset(update_client_globals.updates[update_index].data.actions, 0, sizeof(update_client_globals.updates[update_index].data.actions));
+		}
+
+		update_client_globals.latest_update_number_received = game_time - 1;
+		update_client_globals.next_update_number_to_dequeue = game_time;
+		update_server_globals.next_update_number_to_build = game_time;
+	}
+
+	if (update_server_globals.initialized)
+	{
+		struct update_server_queue *queue;
+
+		update_server_start();
+		queue = datum_get(update_server_globals.queues, 0);
+		queue->next_update_number = update_server_globals.next_update_number_to_build;
+	}
+	else if (update_client_globals.initialized)
+	{
+		update_client_start();
+	}
+
+	return;
+}
+
+boolean update_server_new(
+	void)
+{
+	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 172, !update_server_globals.initialized);
+
+	memset(&update_server_globals, 0, sizeof(update_server_globals));
+	update_server_globals.queues = data_new("update server queues", MAXIMUM_NUMBER_OF_UPDATE_QUEUES, sizeof(struct update_server_queue));
+
+	if (update_server_globals.queues)
+	{
+		memset(update_server_globals.updates, 0, sizeof(update_server_globals.updates));
+
+		if (update_client_new())
+		{
+			update_server_globals.initialized = TRUE;
+		}
+	}
+
+	return update_server_globals.initialized;
+}
+
+void update_server_delete(
+	void)
+{
+	if (update_server_globals.queues)
+	{
+		data_dispose(update_server_globals.queues);
+		update_server_globals.queues = NULL;
+	}
+
+	update_server_globals.initialized = FALSE;
+	update_server_globals.next_update_number_to_build = 0;
+	update_client_delete();
+
+	return;
+}
+
+void update_server_start(
+	void)
+{
+	struct data_iterator iterator;
+
+	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 207, update_server_globals.initialized);
+
+	data_make_valid(update_server_globals.queues);
+	data_delete_all(update_server_globals.queues);
+	data_iterator_new(&iterator, player_data);
+
+	while (data_iterator_next(&iterator))
+	{
+		long queue_index = datum_new_at_index(update_server_globals.queues, iterator.index);
+
+		match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 221, queue_index!=NONE);
+	}
+
+	update_client_start();
+
+	return;
+}
+
 void update_server_add_player(
 	long player_index)
 {
 	long queue_index = datum_new_at_index(update_server_globals.queues, player_index);
 
 	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 235, queue_index!=NONE);
+
+	return;
+}
+
+void update_server_next_update(
+	void)
+{
+	long update_number = update_server_globals.next_update_number_to_build;
+	struct update *update;
+	struct update_server_queue *queue;
+	short queue_index;
+
+	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 250, update_server_globals.initialized);
+
+	update_server_globals.next_update_number_to_build++;
+	update = update_server_get_update(update_number);
+
+	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 256, update);
+
+	update->update_number = update_number;
+	update->data.number_of_actions = 0;
+
+	for (queue_index = 0, queue = update_server_globals.queues->data; queue_index < update_server_globals.queues->count; queue_index++, queue++)
+	{
+		memcpy(&update->data.actions[queue_index], &queue->current_action, sizeof(struct player_action));
+		update->data.number_of_actions++;
+	}
+
+	update_client_handle_server_update(&update->data, update_number);
+
+	return;
+}
+
+void update_server_build_server_update(
+	long machine_index,
+	struct game_update *update,
+	long *update_number)
+{
+	unsigned long time = system_milliseconds();
+	struct update_server_queue *queue = NULL;
+
+	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 282, update && update_number && update_server_globals.initialized);
+
+	if (machine_index != NONE)
+	{
+		match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 286, machine_index<MAXIMUM_NETWORK_MACHINE_COUNT);
+
+		queue = datum_get(update_server_globals.queues, machine_index);
+
+		if (queue->next_update_number < update_server_globals.next_update_number_to_build)
+		{
+			*update_number = queue->next_update_number;
+		}
+		else
+		{
+			*update_number = NONE;
+		}
+	}
+
+	if (*update_number != NONE)
+	{
+		struct update *server_update = update_server_get_update(*update_number);
+
+		if (server_update)
+		{
+			memcpy(update, &server_update->data, sizeof(*update));
+		}
+
+		if (queue)
+		{
+			queue->next_update_number++;
+		}
+	}
 
 	return;
 }
@@ -292,144 +474,6 @@ long update_client_get_maximum_actions(
 	return update_client_globals.latest_update_number_received - update_client_globals.next_update_number_to_dequeue + 1;
 }
 
-void update_client_build_client_update(
-	struct player_action_collection *action_collection)
-{
-	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 580, action_collection && update_client_globals.initialized);
-
-	memcpy(action_collection, &update_client_globals.saved_action_collection, sizeof(*action_collection));
-
-	return;
-}
-
-long player_new_queue(
-	long player_index)
-{
-	long queue_index = datum_new_at_index(update_server_globals.queues, player_index);
-
-	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 658, queue_index!=NONE);
-
-	return queue_index;
-}
-
-static struct update *update_server_get_update(
-	long update_number)
-{
-	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 670, update_server_globals.initialized);
-
-	return (update_number < update_server_globals.next_update_number_to_build && update_number >= update_server_globals.next_update_number_to_build - MAXIMUM_NUMBER_OF_SERVER_UPDATES) ? &update_server_globals.updates[update_number & (MAXIMUM_NUMBER_OF_SERVER_UPDATES - 1)] : NULL;
-}
-
-static struct update *update_client_get_update(
-	long update_number)
-{
-	return (update_number >= update_client_globals.next_update_number_to_dequeue && update_number < update_client_globals.next_update_number_to_dequeue + MAXIMUM_NUMBER_OF_CLIENT_UPDATES) ? &update_client_globals.updates[update_number & (MAXIMUM_NUMBER_OF_CLIENT_UPDATES - 1)] : NULL;
-}
-
-boolean update_server_new(
-	void)
-{
-	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 172, !update_server_globals.initialized);
-
-	memset(&update_server_globals, 0, sizeof(update_server_globals));
-	update_server_globals.queues = data_new("update server queues", MAXIMUM_NUMBER_OF_UPDATE_QUEUES, sizeof(struct update_server_queue));
-
-	if (update_server_globals.queues)
-	{
-		memset(update_server_globals.updates, 0, sizeof(update_server_globals.updates));
-
-		if (update_client_new())
-		{
-			update_server_globals.initialized = TRUE;
-		}
-	}
-
-	return update_server_globals.initialized;
-}
-
-void update_server_delete(
-	void)
-{
-	if (update_server_globals.queues)
-	{
-		data_dispose(update_server_globals.queues);
-		update_server_globals.queues = NULL;
-	}
-
-	update_server_globals.initialized = FALSE;
-	update_server_globals.next_update_number_to_build = 0;
-	update_client_delete();
-
-	return;
-}
-
-void update_server_start(
-	void)
-{
-	struct data_iterator iterator;
-
-	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 207, update_server_globals.initialized);
-
-	data_make_valid(update_server_globals.queues);
-	data_delete_all(update_server_globals.queues);
-	data_iterator_new(&iterator, player_data);
-
-	while (data_iterator_next(&iterator))
-	{
-		long queue_index = datum_new_at_index(update_server_globals.queues, iterator.index);
-
-		match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 221, queue_index!=NONE);
-	}
-
-	update_client_start();
-
-	return;
-}
-
-void update_server_build_server_update(
-	long machine_index,
-	struct game_update *update,
-	long *update_number)
-{
-	unsigned long time = system_milliseconds();
-	struct update_server_queue *queue = NULL;
-
-	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 282, update && update_number && update_server_globals.initialized);
-
-	if (machine_index != NONE)
-	{
-		match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 286, machine_index<MAXIMUM_NETWORK_MACHINE_COUNT);
-
-		queue = datum_get(update_server_globals.queues, machine_index);
-
-		if (queue->next_update_number < update_server_globals.next_update_number_to_build)
-		{
-			*update_number = queue->next_update_number;
-		}
-		else
-		{
-			*update_number = NONE;
-		}
-	}
-
-	if (*update_number != NONE)
-	{
-		struct update *server_update = update_server_get_update(*update_number);
-
-		if (server_update)
-		{
-			memcpy(update, &server_update->data, sizeof(*update));
-		}
-
-		if (queue)
-		{
-			queue->next_update_number++;
-		}
-	}
-
-	return;
-}
-
 boolean update_client_dequeue(
 	struct player_action *actions)
 {
@@ -509,6 +553,28 @@ long update_client_get_maximum_possible_server_time(
 	return update_number;
 }
 
+void update_client_local_ticks(
+	short ticks_elapsed)
+{
+	struct player_action_collection client_update;
+	struct game_update update;
+	long update_number;
+	long machine_index = 0;
+
+	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 523, game_connection()==_game_connection_local);
+
+	update_client_build_client_update(&client_update);
+	update_server_handle_client_update(machine_index, client_update.actions);
+
+	while (ticks_elapsed-- > 0)
+	{
+		update_server_next_update();
+		update_server_build_server_update(machine_index, &update, &update_number);
+	}
+
+	return;
+}
+
 void update_server_handle_client_update(
 	long machine_index,
 	struct player_action *actions)
@@ -530,6 +596,16 @@ void update_server_handle_client_update(
 			match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_queues_new.c", 569, queue->current_action.desired_facing.yaw);
 		}
 	}
+
+	return;
+}
+
+void update_client_build_client_update(
+	struct player_action_collection *action_collection)
+{
+	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 580, action_collection && update_client_globals.initialized);
+
+	memcpy(action_collection, &update_client_globals.saved_action_collection, sizeof(*action_collection));
 
 	return;
 }
@@ -576,104 +652,26 @@ void update_client_handle_server_update(
 	return;
 }
 
-void update_queues_reset_and_fill_with_lies(
-	void)
+long player_new_queue(
+	long player_index)
 {
-	if (update_server_globals.initialized)
-	{
-		update_server_globals.next_update_number_to_build = 0;
-		memset(update_server_globals.updates, 0, sizeof(update_server_globals.updates));
-	}
+	long queue_index = datum_new_at_index(update_server_globals.queues, player_index);
 
-	if (update_client_globals.initialized)
-	{
-		long game_time;
-		long update_number;
-		long update_index;
+	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 658, queue_index!=NONE);
 
-		memset(update_client_globals.updates, NONE, sizeof(update_client_globals.updates));
-		memset(&update_client_globals.saved_action_collection, 0, sizeof(update_client_globals.saved_action_collection));
-		update_client_globals.latest_update_number_received = NONE;
-		update_client_globals.next_update_number_to_dequeue = 0;
-		game_time = game_time_get();
-
-		for (update_number = FLOOR(game_time - MAXIMUM_NUMBER_OF_CLIENT_UPDATES, 0), update_index = 0; update_number < game_time; update_index++, update_number++)
-		{
-			update_client_globals.updates[update_index].update_number = update_number;
-			update_client_globals.updates[update_index].data.number_of_actions = 1;
-			memset(update_client_globals.updates[update_index].data.actions, 0, sizeof(update_client_globals.updates[update_index].data.actions));
-		}
-
-		update_client_globals.latest_update_number_received = game_time - 1;
-		update_client_globals.next_update_number_to_dequeue = game_time;
-		update_server_globals.next_update_number_to_build = game_time;
-	}
-
-	if (update_server_globals.initialized)
-	{
-		struct update_server_queue *queue;
-
-		update_server_start();
-		queue = datum_get(update_server_globals.queues, 0);
-		queue->next_update_number = update_server_globals.next_update_number_to_build;
-	}
-	else if (update_client_globals.initialized)
-	{
-		update_client_start();
-	}
-
-	return;
+	return queue_index;
 }
 
-void update_server_next_update(
-	void)
+static struct update *update_server_get_update(
+	long update_number)
 {
-	long update_number = update_server_globals.next_update_number_to_build;
-	struct update *update;
-	struct update_server_queue *queue;
-	short queue_index;
+	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 670, update_server_globals.initialized);
 
-	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 250, update_server_globals.initialized);
-
-	update_server_globals.next_update_number_to_build++;
-	update = update_server_get_update(update_number);
-
-	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 256, update);
-
-	update->update_number = update_number;
-	update->data.number_of_actions = 0;
-
-	for (queue_index = 0, queue = update_server_globals.queues->data; queue_index < update_server_globals.queues->count; queue_index++, queue++)
-	{
-		memcpy(&update->data.actions[queue_index], &queue->current_action, sizeof(struct player_action));
-		update->data.number_of_actions++;
-	}
-
-	update_client_handle_server_update(&update->data, update_number);
-
-	return;
+	return (update_number < update_server_globals.next_update_number_to_build && update_number >= update_server_globals.next_update_number_to_build - MAXIMUM_NUMBER_OF_SERVER_UPDATES) ? &update_server_globals.updates[update_number & (MAXIMUM_NUMBER_OF_SERVER_UPDATES - 1)] : NULL;
 }
 
-void update_client_local_ticks(
-	short ticks_elapsed)
+static struct update *update_client_get_update(
+	long update_number)
 {
-	struct player_action_collection client_update;
-	struct game_update update;
-	long update_number;
-	long machine_index = 0;
-
-	match_assert("c:\\halo\\SOURCE\\game\\player_queues_new.c", 523, game_connection()==_game_connection_local);
-
-	update_client_build_client_update(&client_update);
-	update_server_handle_client_update(machine_index, client_update.actions);
-
-	while (ticks_elapsed-- > 0)
-	{
-		update_server_next_update();
-		update_server_build_server_update(machine_index, &update, &update_number);
-	}
-
-	return;
+	return (update_number >= update_client_globals.next_update_number_to_dequeue && update_number < update_client_globals.next_update_number_to_dequeue + MAXIMUM_NUMBER_OF_CLIENT_UPDATES) ? &update_client_globals.updates[update_number & (MAXIMUM_NUMBER_OF_CLIENT_UPDATES - 1)] : NULL;
 }
-
-/* ---------- private code */

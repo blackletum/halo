@@ -111,6 +111,21 @@ void rumble_initialize_for_new_map(
 	return;
 }
 
+void rumble_dispose_from_old_map(
+	void)
+{
+	short gamepad_index;
+
+	for (gamepad_index = 0; gamepad_index < MAXIMUM_NUMBER_OF_LOCAL_PLAYERS; gamepad_index++)
+	{
+		input_set_gamepad_rumbler_state(gamepad_index, 0, 0);
+	}
+
+	rumble_clear_all_now();
+
+	return;
+}
+
 void rumble_player_set_scripted_values(
 	real left,
 	real right)
@@ -125,6 +140,50 @@ void rumble_player_set_scale(
 	real scale)
 {
 	rumble_globals->scripted_rumble.scale = scale;
+
+	return;
+}
+
+void rumble_update(
+	void)
+{
+	short local_player_index;
+
+	for (local_player_index = 0; local_player_index < MAXIMUM_NUMBER_OF_LOCAL_PLAYERS; local_player_index++)
+	{
+		struct player_rumble_datum *rumble_datum = &rumble_globals->player_rumble_data[local_player_index];
+		struct rumble_data rumble = rumble_calculate(rumble_datum);
+		long player_index;
+		long impulse_index;
+
+		for (impulse_index = 0; impulse_index < MAXIMUM_NUMBER_OF_RUMBLE_EFFECTS; impulse_index++)
+		{
+			rumble_datum->time_elapsed[impulse_index] += SECONDS_PER_TICK;
+		}
+
+		player_index = local_player_get_player_index(local_player_index);
+
+		if (player_index != NONE)
+		{
+			long controller_index = player_get(player_index)->local_player_index;
+
+			if (controller_index != NONE)
+			{
+				if (!player_ui_rumble_disabled(player_ui_get_single_player_local_player_from_controller((short)controller_index)))
+				{
+					input_set_gamepad_rumbler_state((short)controller_index, rumble.left_frequency, rumble.right_frequency);
+				}
+				else
+				{
+					input_set_gamepad_rumbler_state((short)controller_index, 0, 0);
+				}
+			}
+		}
+		else
+		{
+			input_set_gamepad_rumbler_state(local_player_index, 0, 0);
+		}
+	}
 
 	return;
 }
@@ -198,65 +257,6 @@ void rumble_player_continuous(
 
 	rumble_datum->left_frequency_continuous = left;
 	rumble_datum->right_frequency_continuous = right;
-
-	return;
-}
-
-void rumble_dispose_from_old_map(
-	void)
-{
-	short gamepad_index;
-
-	for (gamepad_index = 0; gamepad_index < MAXIMUM_NUMBER_OF_LOCAL_PLAYERS; gamepad_index++)
-	{
-		input_set_gamepad_rumbler_state(gamepad_index, 0, 0);
-	}
-
-	rumble_clear_all_now();
-
-	return;
-}
-
-void rumble_update(
-	void)
-{
-	short local_player_index;
-
-	for (local_player_index = 0; local_player_index < MAXIMUM_NUMBER_OF_LOCAL_PLAYERS; local_player_index++)
-	{
-		struct player_rumble_datum *rumble_datum = &rumble_globals->player_rumble_data[local_player_index];
-		struct rumble_data rumble = rumble_calculate(rumble_datum);
-		long player_index;
-		long impulse_index;
-
-		for (impulse_index = 0; impulse_index < MAXIMUM_NUMBER_OF_RUMBLE_EFFECTS; impulse_index++)
-		{
-			rumble_datum->time_elapsed[impulse_index] += SECONDS_PER_TICK;
-		}
-
-		player_index = local_player_get_player_index(local_player_index);
-
-		if (player_index != NONE)
-		{
-			long controller_index = player_get(player_index)->local_player_index;
-
-			if (controller_index != NONE)
-			{
-				if (!player_ui_rumble_disabled(player_ui_get_single_player_local_player_from_controller((short)controller_index)))
-				{
-					input_set_gamepad_rumbler_state((short)controller_index, rumble.left_frequency, rumble.right_frequency);
-				}
-				else
-				{
-					input_set_gamepad_rumbler_state((short)controller_index, 0, 0);
-				}
-			}
-		}
-		else
-		{
-			input_set_gamepad_rumbler_state(local_player_index, 0, 0);
-		}
-	}
 
 	return;
 }

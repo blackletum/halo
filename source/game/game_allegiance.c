@@ -158,6 +158,32 @@ void game_allegiance_dispose_from_old_map(
 	return;
 }
 
+void game_allegiance_update(
+	void)
+{
+	struct game_allegiance *allegiance;
+	short index;
+
+	for (index = 0, allegiance = game_allegiance_globals->allegiances; index < game_allegiance_globals->allegiance_count; index++, allegiance++)
+	{
+		if (allegiance->current_incident_decay_time > 0 && --allegiance->current_incident_decay_time == 0)
+		{
+			match_assert("c:\\halo\\SOURCE\\game\\game_allegiance.c", 121, allegiance->current_incidents > 0);
+
+			if (--allegiance->current_incidents == 0)
+			{
+				game_allegiance_broken(allegiance, FALSE, FALSE);
+			}
+			else
+			{
+				allegiance->current_incident_decay_time = allegiance->incident_decay_time;
+			}
+		}
+	}
+
+	return;
+}
+
 boolean game_team_is_enemy(
 	short our_team,
 	short other_team)
@@ -234,100 +260,6 @@ short game_allegiance_get_incidents(
 	}
 
 	return count;
-}
-
-void game_allegiance_provoke(
-	short aggressor_team_index,
-	short victim_team_index)
-{
-	struct game_allegiance *allegiance;
-	short index;
-
-	for (index = 0, allegiance = game_allegiance_globals->allegiances; index < game_allegiance_globals->allegiance_count; index++, allegiance++)
-	{
-		if ((allegiance->team1_index == aggressor_team_index && allegiance->team2_index == victim_team_index && allegiance->team2_suspicious) ||
-			(allegiance->team2_index == aggressor_team_index && allegiance->team1_index == victim_team_index && allegiance->team1_suspicious))
-		{
-			if (allegiance->current_incidents > 0 && allegiance->incident_decay_time != NONE)
-			{
-				allegiance->current_incident_decay_time = allegiance->incident_decay_time;
-			}
-
-			break;
-		}
-	}
-
-	return;
-}
-
-void game_allegiance_notify_change(
-	short aggressor_team_index,
-	short victim_team_index)
-{
-	struct game_allegiance *allegiance;
-	short index;
-
-	for (index = 0, allegiance = game_allegiance_globals->allegiances; index < game_allegiance_globals->allegiance_count; index++, allegiance++)
-	{
-		if ((allegiance->team1_index == aggressor_team_index && allegiance->team2_index == victim_team_index) ||
-			(allegiance->team2_index == aggressor_team_index && allegiance->team1_index == victim_team_index))
-		{
-			allegiance->status_changed = FALSE;
-			break;
-		}
-	}
-
-	return;
-}
-
-static void game_allegiance_broken(
-	struct game_allegiance *allegiance,
-	boolean currently_broken,
-	boolean permanently_broken)
-{
-	if (permanently_broken || allegiance->currently_broken != currently_broken)
-	{
-		allegiance->currently_broken = currently_broken;
-
-		if (allegiance->team1_index < NUMBER_OF_SOLO_CAMPAIGN_TEAMS && allegiance->team2_index < NUMBER_OF_SOLO_CAMPAIGN_TEAMS)
-		{
-			BIT_VECTOR_SET_FLAG(game_allegiance_globals->ally_bitvector, TEAM_PAIR_INDEX(allegiance->team1_index, allegiance->team2_index), !permanently_broken);
-			BIT_VECTOR_SET_FLAG(game_allegiance_globals->ally_bitvector, TEAM_PAIR_INDEX(allegiance->team2_index, allegiance->team1_index), !permanently_broken);
-			BIT_VECTOR_SET_FLAG(game_allegiance_globals->friendly_bitvector, TEAM_PAIR_INDEX(allegiance->team1_index, allegiance->team2_index), !currently_broken);
-			BIT_VECTOR_SET_FLAG(game_allegiance_globals->friendly_bitvector, TEAM_PAIR_INDEX(allegiance->team2_index, allegiance->team1_index), !currently_broken);
-		}
-
-		allegiance->status_changed = TRUE;
-		ai_handle_allegiance_status_changed(allegiance->team1_index, allegiance->team2_index, currently_broken, permanently_broken);
-	}
-
-	return;
-}
-
-void game_allegiance_update(
-	void)
-{
-	struct game_allegiance *allegiance;
-	short index;
-
-	for (index = 0, allegiance = game_allegiance_globals->allegiances; index < game_allegiance_globals->allegiance_count; index++, allegiance++)
-	{
-		if (allegiance->current_incident_decay_time > 0 && --allegiance->current_incident_decay_time == 0)
-		{
-			match_assert("c:\\halo\\SOURCE\\game\\game_allegiance.c", 121, allegiance->current_incidents > 0);
-
-			if (--allegiance->current_incidents == 0)
-			{
-				game_allegiance_broken(allegiance, FALSE, FALSE);
-			}
-			else
-			{
-				allegiance->current_incident_decay_time = allegiance->incident_decay_time;
-			}
-		}
-	}
-
-	return;
 }
 
 void game_allegiance_create(
@@ -467,4 +399,70 @@ boolean game_allegiance_incident(
 	return broken;
 }
 
-/* ---------- private code */
+void game_allegiance_provoke(
+	short aggressor_team_index,
+	short victim_team_index)
+{
+	struct game_allegiance *allegiance;
+	short index;
+
+	for (index = 0, allegiance = game_allegiance_globals->allegiances; index < game_allegiance_globals->allegiance_count; index++, allegiance++)
+	{
+		if ((allegiance->team1_index == aggressor_team_index && allegiance->team2_index == victim_team_index && allegiance->team2_suspicious) ||
+			(allegiance->team2_index == aggressor_team_index && allegiance->team1_index == victim_team_index && allegiance->team1_suspicious))
+		{
+			if (allegiance->current_incidents > 0 && allegiance->incident_decay_time != NONE)
+			{
+				allegiance->current_incident_decay_time = allegiance->incident_decay_time;
+			}
+
+			break;
+		}
+	}
+
+	return;
+}
+
+void game_allegiance_notify_change(
+	short aggressor_team_index,
+	short victim_team_index)
+{
+	struct game_allegiance *allegiance;
+	short index;
+
+	for (index = 0, allegiance = game_allegiance_globals->allegiances; index < game_allegiance_globals->allegiance_count; index++, allegiance++)
+	{
+		if ((allegiance->team1_index == aggressor_team_index && allegiance->team2_index == victim_team_index) ||
+			(allegiance->team2_index == aggressor_team_index && allegiance->team1_index == victim_team_index))
+		{
+			allegiance->status_changed = FALSE;
+			break;
+		}
+	}
+
+	return;
+}
+
+static void game_allegiance_broken(
+	struct game_allegiance *allegiance,
+	boolean currently_broken,
+	boolean permanently_broken)
+{
+	if (permanently_broken || allegiance->currently_broken != currently_broken)
+	{
+		allegiance->currently_broken = currently_broken;
+
+		if (allegiance->team1_index < NUMBER_OF_SOLO_CAMPAIGN_TEAMS && allegiance->team2_index < NUMBER_OF_SOLO_CAMPAIGN_TEAMS)
+		{
+			BIT_VECTOR_SET_FLAG(game_allegiance_globals->ally_bitvector, TEAM_PAIR_INDEX(allegiance->team1_index, allegiance->team2_index), !permanently_broken);
+			BIT_VECTOR_SET_FLAG(game_allegiance_globals->ally_bitvector, TEAM_PAIR_INDEX(allegiance->team2_index, allegiance->team1_index), !permanently_broken);
+			BIT_VECTOR_SET_FLAG(game_allegiance_globals->friendly_bitvector, TEAM_PAIR_INDEX(allegiance->team1_index, allegiance->team2_index), !currently_broken);
+			BIT_VECTOR_SET_FLAG(game_allegiance_globals->friendly_bitvector, TEAM_PAIR_INDEX(allegiance->team2_index, allegiance->team1_index), !currently_broken);
+		}
+
+		allegiance->status_changed = TRUE;
+		ai_handle_allegiance_status_changed(allegiance->team1_index, allegiance->team2_index, currently_broken, permanently_broken);
+	}
+
+	return;
+}

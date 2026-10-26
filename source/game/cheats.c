@@ -109,6 +109,14 @@ void cheats_dispose(
 	return;
 }
 
+void cheats_initialize_for_new_map(
+	void)
+{
+	cheats_load();
+
+	return;
+}
+
 void cheats_dispose_from_old_map(
 	void)
 {
@@ -185,36 +193,55 @@ void cheats_load(
 	return;
 }
 
-void cheat_active_camouflage_local_player(
-	short local_player_index)
+void cheat_all_weapons(
+	void)
 {
-	if (local_player_index >= 0 && local_player_index < MAXIMUM_NUMBER_OF_LOCAL_PLAYERS)
+	struct game_globals *game_globals = scenario_get_game_globals();
+	struct game_globals_tag_reference *weapons = game_globals->weapon_list.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->weapon_list, 0, struct game_globals_tag_reference) : NULL;
+
+	if (weapons)
 	{
-		long player_index = local_player_get_player_index(local_player_index);
+		cheat_objects(game_globals->weapon_list.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->weapon_list, 0, struct game_globals_tag_reference) : NULL, (short)game_globals->weapon_list.count);
+	}
+	else
+	{
+		long tag_index = NONE;
+		short reference_count = 0;
+		struct game_globals_tag_reference weapon_references[MAXIMUM_CHEAT_REFERENCES];
+		struct tag_iterator iterator;
 
-		if (player_index != NONE)
+		tag_iterator_new(&iterator, WEAPON_DEFINITION_TAG);
+
+		while ((tag_index = tag_iterator_next(&iterator)) != NONE && reference_count < NUMBEROF(weapon_references))
 		{
-			struct player_datum *player = player_get(player_index);
-			struct unit_datum *unit = unit_get(player->unit_index);
-
-			unit->unit.active_camouflage = 1.f;
-
-			if (TEST_FLAG(unit->unit.flags, _unit_active_camouflaged_bit))
-			{
-				SET_FLAG(unit->unit.flags, _unit_super_camouflaged_bit, TRUE);
-			}
-
-			SET_FLAG(unit->unit.flags, _unit_active_camouflaged_bit, TRUE);
+			weapon_references[reference_count++].reference.index = tag_index;
 		}
+
+		cheat_objects(weapon_references, reference_count);
 	}
 
 	return;
 }
 
-void cheats_initialize_for_new_map(
+void cheat_all_powerups(
 	void)
 {
-	cheats_load();
+	struct game_globals *game_globals = scenario_get_game_globals();
+
+	cheat_objects(game_globals->cheat_powerups.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->cheat_powerups, 0, struct game_globals_tag_reference) : NULL, (short)game_globals->cheat_powerups.count);
+
+	return;
+}
+
+void cheat_all_vehicles(
+	void)
+{
+	struct game_globals *game_globals = scenario_get_game_globals();
+
+	if (game_globals->multiplayer_information.count)
+	{
+		cheat_objects(TAG_BLOCK_GET_ELEMENT(&game_globals->multiplayer_information, 0, struct game_globals_multiplayer_information)->vehicles.address, (short)TAG_BLOCK_GET_ELEMENT(&game_globals->multiplayer_information, 0, struct game_globals_multiplayer_information)->vehicles.count);
+	}
 
 	return;
 }
@@ -278,54 +305,27 @@ void cheat_active_camouflage(
 	return;
 }
 
-void cheat_all_weapons(
-	void)
+void cheat_active_camouflage_local_player(
+	short local_player_index)
 {
-	struct game_globals *game_globals = scenario_get_game_globals();
-	struct game_globals_tag_reference *weapons = game_globals->weapon_list.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->weapon_list, 0, struct game_globals_tag_reference) : NULL;
-
-	if (weapons)
+	if (local_player_index >= 0 && local_player_index < MAXIMUM_NUMBER_OF_LOCAL_PLAYERS)
 	{
-		cheat_objects(game_globals->weapon_list.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->weapon_list, 0, struct game_globals_tag_reference) : NULL, (short)game_globals->weapon_list.count);
-	}
-	else
-	{
-		long tag_index = NONE;
-		short reference_count = 0;
-		struct game_globals_tag_reference weapon_references[MAXIMUM_CHEAT_REFERENCES];
-		struct tag_iterator iterator;
+		long player_index = local_player_get_player_index(local_player_index);
 
-		tag_iterator_new(&iterator, WEAPON_DEFINITION_TAG);
-
-		while ((tag_index = tag_iterator_next(&iterator)) != NONE && reference_count < NUMBEROF(weapon_references))
+		if (player_index != NONE)
 		{
-			weapon_references[reference_count++].reference.index = tag_index;
+			struct player_datum *player = player_get(player_index);
+			struct unit_datum *unit = unit_get(player->unit_index);
+
+			unit->unit.active_camouflage = 1.f;
+
+			if (TEST_FLAG(unit->unit.flags, _unit_active_camouflaged_bit))
+			{
+				SET_FLAG(unit->unit.flags, _unit_super_camouflaged_bit, TRUE);
+			}
+
+			SET_FLAG(unit->unit.flags, _unit_active_camouflaged_bit, TRUE);
 		}
-
-		cheat_objects(weapon_references, reference_count);
-	}
-
-	return;
-}
-
-void cheat_all_powerups(
-	void)
-{
-	struct game_globals *game_globals = scenario_get_game_globals();
-
-	cheat_objects(game_globals->cheat_powerups.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->cheat_powerups, 0, struct game_globals_tag_reference) : NULL, (short)game_globals->cheat_powerups.count);
-
-	return;
-}
-
-void cheat_all_vehicles(
-	void)
-{
-	struct game_globals *game_globals = scenario_get_game_globals();
-
-	if (game_globals->multiplayer_information.count)
-	{
-		cheat_objects(TAG_BLOCK_GET_ELEMENT(&game_globals->multiplayer_information, 0, struct game_globals_multiplayer_information)->vehicles.address, (short)TAG_BLOCK_GET_ELEMENT(&game_globals->multiplayer_information, 0, struct game_globals_multiplayer_information)->vehicles.count);
 	}
 
 	return;

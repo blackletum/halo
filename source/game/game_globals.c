@@ -207,6 +207,29 @@ char const *material_get_name(
 	return "NONE";
 }
 
+static real game_difficulty_get_value_by_difficulty(
+	short value_type,
+	short difficulty)
+{
+	real result = 1.f;
+	struct game_globals *game_globals = scenario_get_game_globals();
+
+	match_assert("c:\\halo\\SOURCE\\game\\game_globals.c", 922, (value_type >= 0) && (value_type < NUMBER_OF_GAME_DIFFICULTY_VALUES));
+
+	if (game_globals)
+	{
+		struct game_globals_difficulty_information *difficulty_information = game_globals->difficulty_information.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->difficulty_information, 0, struct game_globals_difficulty_information) : NULL;
+
+		if (difficulty_information)
+		{
+			difficulty = PIN(difficulty, 0, NUMBER_OF_GAME_DIFFICULTY_LEVELS - 1);
+			result = difficulty_information->game_difficulty_values[value_type][difficulty];
+		}
+	}
+
+	return result;
+}
+
 real game_difficulty_get_value(
 	short value_type)
 {
@@ -238,29 +261,4 @@ real game_difficulty_get_team_value(
 	}
 
 	return game_difficulty_get_value_by_difficulty(value_type, difficulty);
-}
-
-/* ---------- private code */
-
-static real game_difficulty_get_value_by_difficulty(
-	short value_type,
-	short difficulty)
-{
-	real result = 1.f;
-	struct game_globals *game_globals = scenario_get_game_globals();
-
-	match_assert("c:\\halo\\SOURCE\\game\\game_globals.c", 922, (value_type >= 0) && (value_type < NUMBER_OF_GAME_DIFFICULTY_VALUES));
-
-	if (game_globals)
-	{
-		struct game_globals_difficulty_information *difficulty_information = game_globals->difficulty_information.count ? TAG_BLOCK_GET_ELEMENT(&game_globals->difficulty_information, 0, struct game_globals_difficulty_information) : NULL;
-
-		if (difficulty_information)
-		{
-			difficulty = PIN(difficulty, 0, NUMBER_OF_GAME_DIFFICULTY_LEVELS - 1);
-			result = difficulty_information->game_difficulty_values[value_type][difficulty];
-		}
-	}
-
-	return result;
 }

@@ -204,6 +204,58 @@ static boolean target_is_valid(
 	return valid;
 }
 
+static void find_next_target(
+	long my_index)
+{
+	struct player_datum *player = player_get(my_index);
+	long old_target_index = player->multiplayer.special;
+	long next_target = NONE;
+	struct data_iterator player_iterator;
+	struct player_datum *other_player;
+	long valid_target_count = 0;
+
+	data_iterator_new(&player_iterator, player_data);
+
+	while (other_player = (struct player_datum *)data_iterator_next(&player_iterator))
+	{
+		if (target_is_valid(my_index, old_target_index, player_iterator.index))
+		{
+			valid_target_count++;
+		}
+	}
+
+	if (valid_target_count > 0)
+	{
+		valid_target_count = random_range(0, (short)valid_target_count);
+		data_iterator_new(&player_iterator, player_data);
+
+		while (other_player = (struct player_datum *)data_iterator_next(&player_iterator))
+		{
+			if (target_is_valid(my_index, old_target_index, player_iterator.index))
+			{
+				if (valid_target_count == 0)
+				{
+					next_target = player_iterator.index;
+					break;
+				}
+
+				valid_target_count--;
+			}
+		}
+
+		match_assert("c:\\halo\\SOURCE\\game\\game_engine_slayer.c", 195, next_target != NONE);
+	}
+
+	player->multiplayer.special = next_target;
+
+	if (player->multiplayer.special != NONE)
+	{
+		game_show_score_extended(my_index, slayer_message_new_target, player->multiplayer.special);
+	}
+
+	return;
+}
+
 static void slayer_engine_dispose(
 	void)
 {
@@ -358,127 +410,6 @@ static void slayer_engine_adjust_score(
 	return;
 }
 
-static void slayer_engine_prespawn_player_update(
-	long player_index)
-{
-	return;
-}
-
-static long slayer_get_score(
-	long player_index,
-	enum get_score_type get_score_type)
-{
-	struct player_datum *player = player_get(player_index);
-	long score;
-
-	if (get_score_type == _get_score_team)
-	{
-		score = slayer_globals.team_score[player->team_index];
-	}
-	else
-	{
-		score = slayer_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)];
-	}
-
-	return score;
-}
-
-static boolean slayer_test_flag(
-	long flag)
-{
-	boolean result = FALSE;
-
-	switch (flag)
-	{
-	case _game_engine_show_kills_with_score_bit:
-		result = TRUE;
-		break;
-	}
-
-	return result;
-}
-
-static word *slayer_get_score_string(
-	long player_index,
-	word *buffer)
-{
-	usprintf(buffer, L"%d", slayer_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)]);
-
-	return buffer;
-}
-
-static word *slayer_get_score_header_string(
-	word *buffer)
-{
-	wchar_t *string;
-
-	multiplayer_game_text_get_string(string, _string_score);
-	ustrcpy(buffer, string);
-
-	return buffer;
-}
-
-static word *slayer_get_team_score_string(
-	long team_index,
-	word *buffer)
-{
-	usprintf(buffer, L"%d", slayer_globals.team_score[team_index]);
-
-	return buffer;
-}
-
-static void find_next_target(
-	long my_index)
-{
-	struct player_datum *player = player_get(my_index);
-	long old_target_index = player->multiplayer.special;
-	long next_target = NONE;
-	struct data_iterator player_iterator;
-	struct player_datum *other_player;
-	long valid_target_count = 0;
-
-	data_iterator_new(&player_iterator, player_data);
-
-	while (other_player = (struct player_datum *)data_iterator_next(&player_iterator))
-	{
-		if (target_is_valid(my_index, old_target_index, player_iterator.index))
-		{
-			valid_target_count++;
-		}
-	}
-
-	if (valid_target_count > 0)
-	{
-		valid_target_count = random_range(0, (short)valid_target_count);
-		data_iterator_new(&player_iterator, player_data);
-
-		while (other_player = (struct player_datum *)data_iterator_next(&player_iterator))
-		{
-			if (target_is_valid(my_index, old_target_index, player_iterator.index))
-			{
-				if (valid_target_count == 0)
-				{
-					next_target = player_iterator.index;
-					break;
-				}
-
-				valid_target_count--;
-			}
-		}
-
-		match_assert("c:\\halo\\SOURCE\\game\\game_engine_slayer.c", 195, next_target != NONE);
-	}
-
-	player->multiplayer.special = next_target;
-
-	if (player->multiplayer.special != NONE)
-	{
-		game_show_score_extended(my_index, slayer_message_new_target, player->multiplayer.special);
-	}
-
-	return;
-}
-
 static void slayer_engine_player_killed_player(
 	long killing_player_index,
 	long killing_object_index,
@@ -588,6 +519,12 @@ static boolean slayer_engine_display_score(
 	return result;
 }
 
+static void slayer_engine_prespawn_player_update(
+	long player_index)
+{
+	return;
+}
+
 static void slayer_player_update(
 	long player_index)
 {
@@ -644,3 +581,67 @@ static void slayer_player_update(
 
 	return;
 }
+
+static long slayer_get_score(
+	long player_index,
+	enum get_score_type get_score_type)
+{
+	struct player_datum *player = player_get(player_index);
+	long score;
+
+	if (get_score_type == _get_score_team)
+	{
+		score = slayer_globals.team_score[player->team_index];
+	}
+	else
+	{
+		score = slayer_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)];
+	}
+
+	return score;
+}
+
+static boolean slayer_test_flag(
+	long flag)
+{
+	boolean result = FALSE;
+
+	switch (flag)
+	{
+	case _game_engine_show_kills_with_score_bit:
+		result = TRUE;
+		break;
+	}
+
+	return result;
+}
+
+static word *slayer_get_score_string(
+	long player_index,
+	word *buffer)
+{
+	usprintf(buffer, L"%d", slayer_globals.individual_score[DATUM_INDEX_TO_ABSOLUTE_INDEX(player_index)]);
+
+	return buffer;
+}
+
+static word *slayer_get_score_header_string(
+	word *buffer)
+{
+	wchar_t *string;
+
+	multiplayer_game_text_get_string(string, _string_score);
+	ustrcpy(buffer, string);
+
+	return buffer;
+}
+
+static word *slayer_get_team_score_string(
+	long team_index,
+	word *buffer)
+{
+	usprintf(buffer, L"%d", slayer_globals.team_score[team_index]);
+
+	return buffer;
+}
+

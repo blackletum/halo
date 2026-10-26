@@ -379,6 +379,36 @@ void player_control_dispose(
 	return;
 }
 
+void player_control_initialize_for_new_map(
+	void)
+{
+	short local_player_index;
+
+	player_control_globals->testing_for_action_flags = 0;
+	player_control_globals->action_test_flags = 0;
+	player_control_globals->inhibit_button_flags = 0;
+	player_control_globals->control_flags = 0;
+
+	for (local_player_index = 0; local_player_index < MAXIMUM_NUMBER_OF_LOCAL_PLAYERS; local_player_index++)
+	{
+		struct game_globals_player_control *constants = TAG_BLOCK_GET_ELEMENT(&scenario_get_game_globals()->player_control, 0, struct game_globals_player_control);
+
+		player_control_new_unit(local_player_index, NONE);
+
+		if (player_look_pitch_rate[local_player_index] == 0.f)
+		{
+			player_look_pitch_rate[local_player_index] = constants->look_default_pitch_rate;
+		}
+
+		if (player_look_yaw_rate[local_player_index] == 0.f)
+		{
+			player_look_yaw_rate[local_player_index] = constants->look_default_yaw_rate;
+		}
+	}
+
+	return;
+}
+
 void player_control_dispose_from_old_map(
 	void)
 {
@@ -758,6 +788,161 @@ static void get_local_player_input_blob(
 	return;
 }
 
+static void handle_one_player_input(
+	short local_player_index,
+	real seconds_elapsed)
+{
+	struct player_control *player = player_control_get(local_player_index);
+	struct game_globals_player_control *constants = TAG_BLOCK_GET_ELEMENT(&scenario_get_game_globals()->player_control, 0, struct game_globals_player_control);
+	struct input_blob input;
+	long weapon_index;
+
+	memset(&input, 0xFA, sizeof(input));
+	get_local_player_input_blob(local_player_index, seconds_elapsed, &input);
+
+	if (local_player_get_player_index(local_player_index) != NONE)
+	{
+		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 718, player->desired_angles.pitch);
+		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 719, player->desired_angles.yaw);
+	}
+
+	if (director_inhibited_input(local_player_index))
+	{
+		clear_input_blob(&input);
+	}
+
+	if (game_connection() == _game_connection_local)
+	{
+		if (input.player_control_flags & (FLAG(_player_control_debug_rotate_units_bit) | FLAG(_player_control_debug_rotate_all_units_bit)))
+		{
+			long unit_index = TEST_FLAG(input.player_control_flags, _player_control_debug_rotate_all_units_bit) ? units_debug_get_next_unit(player->unit_index) : units_debug_get_closest_unit(player->unit_index);
+
+			if (unit_index != NONE)
+			{
+				players_set_local_player_unit(local_player_index, unit_index);
+			}
+		}
+
+		if (TEST_FLAG(input.player_control_flags, _player_control_debug_ninja_rope_bit) && player->unit_index != NONE)
+		{
+			unit_debug_ninja_rope(player->unit_index);
+		}
+	}
+
+	if (player->unit_index != NONE)
+	{
+		struct unit_datum *unit = (struct unit_datum *)object_get_and_verify_type(player->unit_index, _object_mask_unit);
+		struct unit_definition *definition = (struct unit_definition *)tag_get(UNIT_DEFINITION_TAG, unit->definition_index);
+		short must_be_readied_weapon_index;
+
+		weapon_index = unit_inventory_get_weapon(player->unit_index, unit->unit.current_weapon_index);
+
+		if (player->desired_weapon_index == NONE || unit_inventory_get_weapon(player->unit_index, player->desired_weapon_index) == NONE)
+		{
+			player->desired_weapon_index = unit->unit.desired_weapon_index;
+		}
+
+		if (TEST_FLAG(input.player_control_flags, _player_control_rotate_weapons_bit) || unit_inventory_get_weapon(player->unit_index, player->desired_weapon_index) == NONE || player->desired_weapon_index == NONE)
+		{
+			player->desired_weapon_index = unit_inventory_next_weapon(player->unit_index, player->desired_weapon_index, TEST_FLAG(input.player_control_flags, _player_control_rotate_weapons_bit));
+			player->desired_zoom_level = NONE;
+		}
+
+		must_be_readied_weapon_index = unit_inventory_get_must_be_readied_weapon(player->unit_index);
+		if (must_be_readied_weapon_index != NONE && player->desired_weapon_index != must_be_readied_weapon_index)
+		{
+			player->desired_weapon_index = must_be_readied_weapon_index;
+			player->desired_zoom_level = NONE;
+		}
+
+		if (player->desired_grenade_index == NONE || !unit_get_grenade_count(player->unit_index, player->desired_grenade_index))
+		{
+			player->desired_grenade_index = unit->unit.desired_grenade_index;
+		}
+
+		if (TEST_FLAG(input.player_control_flags, _player_control_rotate_grenades_bit) || !unit_get_grenade_count(player->unit_index, player->desired_grenade_index) || player->desired_grenade_index == NONE)
+		{
+			player->desired_grenade_index = unit_inventory_next_grenade(player->unit_index, player->desired_grenade_index, TRUE);
+		}
+
+		if (TEST_FLAG(input.player_control_flags, _player_control_zoom_bit) && player_control_camera_control_is_active() && weapon_index != NONE && !cinematic_in_progress())
+		{
+			player->desired_zoom_level = weapon_rotate_zoom_level(weapon_index, player->desired_zoom_level);
+		}
+
+		if (!director_inhibited_facing(local_player_index))
+		{
+			player_control_modify_desired_angles(local_player_index, input.facing_delta.yaw, input.facing_delta.pitch);
+		}
+
+		if (unit->object.parent_object_index == NONE)
+		{
+			if (player_ui_autolevel_enabled(local_player_index) && fabs(player->throttle.i) > 0.5f && input.facing_delta.pitch < 0.0001f && player->magnetism_level < 0.0001f)
+			{
+				player->autolevel_ticks = (char)PIN(player->autolevel_ticks + 1, 0, CHAR_MAX);
+				player->use_autolevel = player->autolevel_ticks > constants->minimum_autolevel_enabled_ticks;
+			}
+			else
+			{
+				player->autolevel_ticks = 0;
+				player->use_autolevel = FALSE;
+			}
+		}
+		else
+		{
+			player->use_autolevel = FALSE;
+		}
+	}
+
+	player->control_flags = input.unit_control_flags;
+	player->throttle = input.throttle;
+	player->primary_trigger = input.primary_trigger;
+	match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 849, player->primary_trigger);
+
+	if (local_player_get_player_index(local_player_index) != NONE)
+	{
+		struct player_action action;
+
+		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 861, player->desired_angles.pitch);
+		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 862, player->desired_angles.yaw);
+		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 863, player->primary_trigger);
+
+		action.desired_facing = player->desired_angles;
+		action.control_flags = player->control_flags;
+		action.desired_weapon_index = player->desired_weapon_index;
+		action.desired_grenade_index = player->desired_grenade_index;
+		action.desired_zoom_level = player->desired_zoom_level;
+		action.throttle = player->throttle;
+		action.primary_trigger = player->primary_trigger;
+
+		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 873, action.desired_facing.pitch);
+		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 874, action.desired_facing.yaw);
+		update_client_queue(&action);
+	}
+
+	return;
+}
+
+boolean player_control_update(
+	real seconds_elapsed)
+{
+	short local_player_index;
+
+	profile_enter(player_control_update_section);
+	collision_log_begin_period(_collision_period_player_input);
+	update_client_queue_push();
+
+	for (local_player_index = 0; local_player_index < MAXIMUM_NUMBER_OF_LOCAL_PLAYERS; local_player_index++)
+	{
+		handle_one_player_input(local_player_index, seconds_elapsed);
+	}
+
+	collision_log_end_period();
+	profile_exit(player_control_update_section);
+
+	return FALSE;
+}
+
 real_euler_angles2d const *player_control_get_facing_angles(
 	short local_player_index)
 {
@@ -905,6 +1090,16 @@ real player_control_get_autoaim_level(
 	return player_control_get(local_player_index)->autoaim_level;
 }
 
+void player_control_permanent_impulse(
+	short local_player_index,
+	real_euler_angles2d const *delta)
+{
+	match_assert("c:\\halo\\SOURCE\\game\\player_control.c", 1127, delta);
+	player_control_modify_desired_angles(local_player_index, delta->yaw, delta->pitch);
+
+	return;
+}
+
 static void player_control_modify_desired_angles(
 	short local_player_index,
 	real delta_yaw,
@@ -1027,36 +1222,6 @@ static void player_control_modify_desired_angles(
 	interpolate_scalar(&player->pitch_maximum, pitch_maximum, _pi / 256.f);
 	player->desired_angles.pitch += delta_pitch;
 	player->desired_angles.pitch = PIN(player->desired_angles.pitch, player->pitch_minimum, player->pitch_maximum);
-
-	return;
-}
-
-void player_control_initialize_for_new_map(
-	void)
-{
-	short local_player_index;
-
-	player_control_globals->testing_for_action_flags = 0;
-	player_control_globals->action_test_flags = 0;
-	player_control_globals->inhibit_button_flags = 0;
-	player_control_globals->control_flags = 0;
-
-	for (local_player_index = 0; local_player_index < MAXIMUM_NUMBER_OF_LOCAL_PLAYERS; local_player_index++)
-	{
-		struct game_globals_player_control *constants = TAG_BLOCK_GET_ELEMENT(&scenario_get_game_globals()->player_control, 0, struct game_globals_player_control);
-
-		player_control_new_unit(local_player_index, NONE);
-
-		if (player_look_pitch_rate[local_player_index] == 0.f)
-		{
-			player_look_pitch_rate[local_player_index] = constants->look_default_pitch_rate;
-		}
-
-		if (player_look_yaw_rate[local_player_index] == 0.f)
-		{
-			player_look_yaw_rate[local_player_index] = constants->look_default_yaw_rate;
-		}
-	}
 
 	return;
 }
@@ -1350,167 +1515,3 @@ static void player_control_action_test_check_reset_input_blob(
 	return;
 }
 
-static void handle_one_player_input(
-	short local_player_index,
-	real seconds_elapsed)
-{
-	struct player_control *player = player_control_get(local_player_index);
-	struct game_globals_player_control *constants = TAG_BLOCK_GET_ELEMENT(&scenario_get_game_globals()->player_control, 0, struct game_globals_player_control);
-	struct input_blob input;
-	long weapon_index;
-
-	memset(&input, 0xFA, sizeof(input));
-	get_local_player_input_blob(local_player_index, seconds_elapsed, &input);
-
-	if (local_player_get_player_index(local_player_index) != NONE)
-	{
-		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 718, player->desired_angles.pitch);
-		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 719, player->desired_angles.yaw);
-	}
-
-	if (director_inhibited_input(local_player_index))
-	{
-		clear_input_blob(&input);
-	}
-
-	if (game_connection() == _game_connection_local)
-	{
-		if (input.player_control_flags & (FLAG(_player_control_debug_rotate_units_bit) | FLAG(_player_control_debug_rotate_all_units_bit)))
-		{
-			long unit_index = TEST_FLAG(input.player_control_flags, _player_control_debug_rotate_all_units_bit) ? units_debug_get_next_unit(player->unit_index) : units_debug_get_closest_unit(player->unit_index);
-
-			if (unit_index != NONE)
-			{
-				players_set_local_player_unit(local_player_index, unit_index);
-			}
-		}
-
-		if (TEST_FLAG(input.player_control_flags, _player_control_debug_ninja_rope_bit) && player->unit_index != NONE)
-		{
-			unit_debug_ninja_rope(player->unit_index);
-		}
-	}
-
-	if (player->unit_index != NONE)
-	{
-		struct unit_datum *unit = (struct unit_datum *)object_get_and_verify_type(player->unit_index, _object_mask_unit);
-		struct unit_definition *definition = (struct unit_definition *)tag_get(UNIT_DEFINITION_TAG, unit->definition_index);
-		short must_be_readied_weapon_index;
-
-		weapon_index = unit_inventory_get_weapon(player->unit_index, unit->unit.current_weapon_index);
-
-		if (player->desired_weapon_index == NONE || unit_inventory_get_weapon(player->unit_index, player->desired_weapon_index) == NONE)
-		{
-			player->desired_weapon_index = unit->unit.desired_weapon_index;
-		}
-
-		if (TEST_FLAG(input.player_control_flags, _player_control_rotate_weapons_bit) || unit_inventory_get_weapon(player->unit_index, player->desired_weapon_index) == NONE || player->desired_weapon_index == NONE)
-		{
-			player->desired_weapon_index = unit_inventory_next_weapon(player->unit_index, player->desired_weapon_index, TEST_FLAG(input.player_control_flags, _player_control_rotate_weapons_bit));
-			player->desired_zoom_level = NONE;
-		}
-
-		must_be_readied_weapon_index = unit_inventory_get_must_be_readied_weapon(player->unit_index);
-		if (must_be_readied_weapon_index != NONE && player->desired_weapon_index != must_be_readied_weapon_index)
-		{
-			player->desired_weapon_index = must_be_readied_weapon_index;
-			player->desired_zoom_level = NONE;
-		}
-
-		if (player->desired_grenade_index == NONE || !unit_get_grenade_count(player->unit_index, player->desired_grenade_index))
-		{
-			player->desired_grenade_index = unit->unit.desired_grenade_index;
-		}
-
-		if (TEST_FLAG(input.player_control_flags, _player_control_rotate_grenades_bit) || !unit_get_grenade_count(player->unit_index, player->desired_grenade_index) || player->desired_grenade_index == NONE)
-		{
-			player->desired_grenade_index = unit_inventory_next_grenade(player->unit_index, player->desired_grenade_index, TRUE);
-		}
-
-		if (TEST_FLAG(input.player_control_flags, _player_control_zoom_bit) && player_control_camera_control_is_active() && weapon_index != NONE && !cinematic_in_progress())
-		{
-			player->desired_zoom_level = weapon_rotate_zoom_level(weapon_index, player->desired_zoom_level);
-		}
-
-		if (!director_inhibited_facing(local_player_index))
-		{
-			player_control_modify_desired_angles(local_player_index, input.facing_delta.yaw, input.facing_delta.pitch);
-		}
-
-		if (unit->object.parent_object_index == NONE)
-		{
-			if (player_ui_autolevel_enabled(local_player_index) && fabs(player->throttle.i) > 0.5f && input.facing_delta.pitch < 0.0001f && player->magnetism_level < 0.0001f)
-			{
-				player->autolevel_ticks = (char)PIN(player->autolevel_ticks + 1, 0, CHAR_MAX);
-				player->use_autolevel = player->autolevel_ticks > constants->minimum_autolevel_enabled_ticks;
-			}
-			else
-			{
-				player->autolevel_ticks = 0;
-				player->use_autolevel = FALSE;
-			}
-		}
-		else
-		{
-			player->use_autolevel = FALSE;
-		}
-	}
-
-	player->control_flags = input.unit_control_flags;
-	player->throttle = input.throttle;
-	player->primary_trigger = input.primary_trigger;
-	match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 849, player->primary_trigger);
-
-	if (local_player_get_player_index(local_player_index) != NONE)
-	{
-		struct player_action action;
-
-		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 861, player->desired_angles.pitch);
-		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 862, player->desired_angles.yaw);
-		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 863, player->primary_trigger);
-
-		action.desired_facing = player->desired_angles;
-		action.control_flags = player->control_flags;
-		action.desired_weapon_index = player->desired_weapon_index;
-		action.desired_grenade_index = player->desired_grenade_index;
-		action.desired_zoom_level = player->desired_zoom_level;
-		action.throttle = player->throttle;
-		action.primary_trigger = player->primary_trigger;
-
-		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 873, action.desired_facing.pitch);
-		match_assert_valid_real("c:\\halo\\SOURCE\\game\\player_control.c", 874, action.desired_facing.yaw);
-		update_client_queue(&action);
-	}
-
-	return;
-}
-
-boolean player_control_update(
-	real seconds_elapsed)
-{
-	short local_player_index;
-
-	profile_enter(player_control_update_section);
-	collision_log_begin_period(_collision_period_player_input);
-	update_client_queue_push();
-
-	for (local_player_index = 0; local_player_index < MAXIMUM_NUMBER_OF_LOCAL_PLAYERS; local_player_index++)
-	{
-		handle_one_player_input(local_player_index, seconds_elapsed);
-	}
-
-	collision_log_end_period();
-	profile_exit(player_control_update_section);
-
-	return FALSE;
-}
-
-void player_control_permanent_impulse(
-	short local_player_index,
-	real_euler_angles2d const *delta)
-{
-	match_assert("c:\\halo\\SOURCE\\game\\player_control.c", 1127, delta);
-	player_control_modify_desired_angles(local_player_index, delta->yaw, delta->pitch);
-
-	return;
-}
