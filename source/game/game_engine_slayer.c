@@ -103,6 +103,9 @@ enum
 
 /* ---------- macros */
 
+#define KILL_PENALTY_RECOVERY_PER_TICK (1.f/(5*TICKS_PER_MINUTE)) /* fake name */
+#define DEATH_BONUS_RECOVERY_PER_TICK (1.f/(50*TICKS_PER_MINUTE)) /* fake name */
+
 /* ---------- structures */
 
 struct slayer_globals_type
@@ -532,13 +535,13 @@ static void slayer_player_update(
 
 	if (game_engine_get_variant()->game_engine_variant.slayer.no_kill_penalty && player->multiplayer.speed_multiplier > 1.f)
 	{
-		player->multiplayer.speed_multiplier -= 0.00011111111f;
+		player->multiplayer.speed_multiplier -= KILL_PENALTY_RECOVERY_PER_TICK;
 		player->multiplayer.speed_multiplier = MAX(player->multiplayer.speed_multiplier, 1.f);
 	}
 
 	if (game_engine_get_variant()->game_engine_variant.slayer.no_death_bonus && player->multiplayer.speed_multiplier < 1.f)
 	{
-		player->multiplayer.speed_multiplier += 0.000011111111f;
+		player->multiplayer.speed_multiplier += DEATH_BONUS_RECOVERY_PER_TICK;
 		player->multiplayer.speed_multiplier = MIN(player->multiplayer.speed_multiplier, 1.f);
 	}
 

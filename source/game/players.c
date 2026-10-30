@@ -271,6 +271,8 @@ symbols in this file:
 
 /* ---------- macros */
 
+#define MAXIMUM_WEAPONS_PER_PLAYER 2 /* fake name */
+
 /* ---------- structures */
 
 struct team_datum /* fake name */
@@ -293,9 +295,9 @@ struct players_global_data
 	short respawn_failure_reason;
 	boolean force_respawn;
 	char local_player_triggered_switch : 4;
-	unsigned char bsp_check_recursive_switch_ticks : 4;
-	unsigned long combined_pvs[16];
-	unsigned long combined_pvs_local[16];
+	byte bsp_check_recursive_switch_ticks : 4;
+	unsigned long combined_pvs[BIT_VECTOR_SIZE_IN_LONGS(MAXIMUM_CLUSTERS_PER_STRUCTURE)];
+	unsigned long combined_pvs_local[BIT_VECTOR_SIZE_IN_LONGS(MAXIMUM_CLUSTERS_PER_STRUCTURE)];
 };
 
 /* ---------- prototypes */
@@ -530,7 +532,7 @@ long player_new(
 
 		if (network_player_data)
 		{
-			memcpy(&player->network_player_data, network_player_data, sizeof(struct network_player));
+			memcpy(&player->network_player_data, network_player_data, sizeof(player->network_player_data));
 		}
 	}
 
@@ -579,7 +581,7 @@ void player_add_equipment(
 			{
 				weapon_index = create_weapon(&profile->starting_weapons[0], unit_index);
 
-				if (weapon_index != NONE && !unit_add_weapon_to_inventory(unit_index, weapon_index, reset ? 1 : 0))
+				if (weapon_index != NONE && !unit_add_weapon_to_inventory(unit_index, weapon_index, reset ? _unit_add_weapon_as_current_weapon : _unit_add_weapon_normally))
 				{
 					error(_error_silent, "Could not attach starting weapon to player");
 					object_delete(weapon_index);
@@ -590,7 +592,7 @@ void player_add_equipment(
 			{
 				weapon_index = create_weapon(&profile->starting_weapons[1], unit_index);
 
-				if (weapon_index != NONE && !unit_add_weapon_to_inventory(unit_index, weapon_index, 0))
+				if (weapon_index != NONE && !unit_add_weapon_to_inventory(unit_index, weapon_index, _unit_add_weapon_normally))
 				{
 					error(_error_silent, "Could not attach starting weapon to player");
 					object_delete(weapon_index);
@@ -774,10 +776,15 @@ void players_update_before_game(
 			struct player_action *action = &actions[action_index];
 
 			match_assert("c:\\halo\\SOURCE\\game\\players.c", 598, action_index>=0 && action_index<NETWORK_GAME_MAXIMUM_PLAYER_COUNT);
+
+
+
+
 			match_assert_valid_real("c:\\halo\\SOURCE\\game\\players.c", 603, action->desired_facing.pitch);
 			match_assert_valid_real("c:\\halo\\SOURCE\\game\\players.c", 604, action->desired_facing.yaw);
 			match_assert_valid_real_vector2d("c:\\halo\\SOURCE\\game\\players.c", 605, &action->throttle);
 			match_assert_valid_real("c:\\halo\\SOURCE\\game\\players.c", 606, action->primary_trigger);
+
 			match_assert("c:\\halo\\SOURCE\\game\\players.c", 608, (NONE == action->desired_weapon_index) || ((action->desired_weapon_index >= 0) && (action->desired_weapon_index <= MAXIMUM_WEAPONS_PER_UNIT)));
 			match_assert("c:\\halo\\SOURCE\\game\\players.c", 609, (NONE == action->desired_grenade_index) || ((action->desired_grenade_index >= 0) && (action->desired_grenade_index <= NUMBER_OF_UNIT_GRENADE_TYPES)));
 			match_assert("c:\\halo\\SOURCE\\game\\players.c", 610, (NONE == action->desired_zoom_level) || ((action->desired_zoom_level >= 0)));
@@ -1911,7 +1918,7 @@ static void players_compute_combined_pvs(
 {
 	struct structure_bsp *structure_bsp = global_structure_bsp_get();
 
-	memset(combined_pvs, 0, 16 * sizeof(unsigned long));
+	memset(combined_pvs, 0, BIT_VECTOR_SIZE_IN_BYTES(MAXIMUM_CLUSTERS_PER_STRUCTURE));
 
 	if (!game_in_editor())
 	{
@@ -2051,6 +2058,7 @@ static void player_examine_nearby_vehicle(
 					match_assert("c:\\halo\\SOURCE\\game\\players.c", 2108, seat_index != NONE);
 					player_set_action_result(player_index, _player_action_result_enter_vehicle, vehicle_index, seat_index);
 					break;
+
 				case _unit_nearby_seat_result_occupied_by_friend:
 					match_assert("c:\\halo\\SOURCE\\game\\players.c", 2113, seat_index != NONE);
 					player_set_action_result(player_index, _player_action_result_evict_from_vehicle, vehicle_index, seat_index);
@@ -2105,7 +2113,7 @@ boolean unit_should_autopick_weapon(
 
 	boolean autopick = (unit_approve_weapon_pickup(unit_index, weapon_index) && TEST_FLAG(definition->weapon.flags, _weapon_doesnt_count_toward_maximum_bit)) ||
 		weapon_count == 0 ||
-		(!game_engine_running() && unit_approve_weapon_pickup(unit_index, weapon_index) && weapon_count < 2) ||
+		(!game_engine_running() && unit_approve_weapon_pickup(unit_index, weapon_index) && weapon_count < MAXIMUM_WEAPONS_PER_PLAYER) ||
 		game_engine_force_autopickup(unit_index, weapon_index);
 
 	return autopick;
@@ -2193,7 +2201,7 @@ static void player_examine_nearby_item(
 			weapon_count = unit_get_weapon_count(player->unit_index);
 			current_weapon_doesnt_count = FALSE;
 
-			if (weapon_count >= 2 && current_weapon_index != NONE && !TEST_FLAG(definition->weapon.flags, _weapon_doesnt_count_toward_maximum_bit) && TEST_FLAG(weapon_definition_get(weapon_get(current_weapon_index)->definition_index)->weapon.flags, _weapon_doesnt_count_toward_maximum_bit))
+			if (weapon_count >= MAXIMUM_WEAPONS_PER_PLAYER && current_weapon_index != NONE && !TEST_FLAG(definition->weapon.flags, _weapon_doesnt_count_toward_maximum_bit) && TEST_FLAG(weapon_definition_get(weapon_get(current_weapon_index)->definition_index)->weapon.flags, _weapon_doesnt_count_toward_maximum_bit))
 			{
 				current_weapon_doesnt_count = TRUE;
 			}
@@ -2202,7 +2210,7 @@ static void player_examine_nearby_item(
 			{
 				if (unit_should_autopick_weapon(player->unit_index, item_index))
 				{
-					if (unit_add_weapon_to_inventory(player->unit_index, item_index, 1))
+					if (unit_add_weapon_to_inventory(player->unit_index, item_index, _unit_add_weapon_as_current_weapon))
 					{
 						hud_picked_up_weapon(player->local_player_index, weapon_get(item_index)->definition_index);
 						player_control_unzoom(player->unit_index);
@@ -2288,7 +2296,7 @@ static boolean player_handle_weapon_swap(
 	switch (player->action_result)
 	{
 	case _player_action_result_swap_for_weapon:
-		if (unit_drop_current_weapon(player->unit_index, TRUE) && unit_add_weapon_to_inventory(player->unit_index, player->action_object_index, 1))
+		if (unit_drop_current_weapon(player->unit_index, TRUE) && unit_add_weapon_to_inventory(player->unit_index, player->action_object_index, _unit_add_weapon_as_current_weapon))
 		{
 			hud_picked_up_weapon(player->local_player_index, weapon_get(player->action_object_index)->definition_index);
 			player_control_unzoom(player->unit_index);
@@ -2297,7 +2305,7 @@ static boolean player_handle_weapon_swap(
 		handled = TRUE;
 		break;
 	case _player_action_result_add_weapon_to_inventory:
-		if (unit_add_weapon_to_inventory(player->unit_index, player->action_object_index, 1))
+		if (unit_add_weapon_to_inventory(player->unit_index, player->action_object_index, _unit_add_weapon_as_current_weapon))
 		{
 			hud_picked_up_weapon(player->local_player_index, weapon_get(player->action_object_index)->definition_index);
 		}

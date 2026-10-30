@@ -74,7 +74,7 @@ enum
 
 static boolean unit_get_aim_assist_parameters(long unit_index, short zoom_level, struct aim_assist_parameters *parameters);
 static void object_compute_autoaim_target(long object_index, real_point3d const *position, real_vector3d const *direction, real_point3d *target);
-static int __cdecl compare_targets(struct aim_assist_target const *target0, struct aim_assist_target const *target1);
+static int __cdecl compare_targets(void const *a, void const *b);
 static short find_aim_assist_targets_recursive(struct aim_assist_parameters const *parameters, long object_index, real_point3d const *position, real_vector3d const *direction, real distance, real angle_sine, real angle_cosine, long ignore_object_index, short ignore_team_index, short maximum_target_count, struct aim_assist_target *targets);
 static short find_aim_assist_targets(struct aim_assist_parameters const *parameters, short position_cluster_index, real_point3d const *position, real_vector3d const *direction, long ignore_object_index, short ignore_team_index, short maximum_target_count, struct aim_assist_target *targets);
 
@@ -155,7 +155,7 @@ long player_aim_projectile(
 		}
 
 		{
-			struct unit_datum *unit = (struct unit_datum *)object_get_and_verify_type(unit_index, _object_mask_unit);
+			struct unit_datum *unit = unit_get(unit_index);
 			real camera_distance = magnitude3d(vector_from_points3d(&unit->object.position, &camera_position, &camera_displacement));
 			struct collision_result collision;
 
@@ -263,7 +263,7 @@ boolean aim_assist(
 			{
 				short target_index;
 
-				qsort(targets, target_count, sizeof(struct aim_assist_target), (int (__cdecl *)(void const *, void const *))compare_targets);
+				qsort(targets, target_count, sizeof(struct aim_assist_target), compare_targets);
 				for (target_index = 0; target_index < target_count; target_index++)
 				{
 					if (aim_assist_clear_line_of_sight(position, &targets[target_index].position, ignore_object_index, targets[target_index].object_index))
@@ -304,8 +304,8 @@ boolean aim_assist_compute_target(
 
 		if (target->magnetism_level > 0.f)
 		{
-			struct unit_datum *unit = (struct unit_datum *)object_get_and_verify_type(target->object_index, _object_mask_unit);
-			struct unit_definition *definition = (struct unit_definition *)tag_get(UNIT_DEFINITION_TAG, unit->definition_index);
+			struct unit_datum *unit = unit_get(target->object_index);
+			struct unit_definition *definition = unit_definition_get(unit->definition_index);
 
 			if (TEST_FLAG(definition->unit.flags, _unit_is_inconsequential_bit))
 			{
@@ -387,8 +387,8 @@ static boolean unit_get_aim_assist_parameters(
 
 		if (weapon_index != NONE)
 		{
-			struct weapon_datum *weapon = (struct weapon_datum *)object_get_and_verify_type(weapon_index, _object_mask_weapon);
-			struct weapon_definition *definition = (struct weapon_definition *)tag_get(WEAPON_DEFINITION_TAG, weapon->definition_index);
+			struct weapon_datum *weapon = weapon_get(weapon_index);
+			struct weapon_definition *definition = weapon_definition_get(weapon->definition_index);
 
 			if (zoom_level != NONE || !TEST_FLAG(definition->weapon.flags, _weapon_aim_assists_only_when_zoomed_bit))
 			{
@@ -465,18 +465,18 @@ static short find_aim_assist_targets_recursive(
 
 	do
 	{
-		struct object_datum *object = (struct object_datum *)object_get_and_verify_type(object_index, NONE);
+		struct object_datum *object = object_get(object_index);
 
 		if (TEST_FLAG(_object_mask_unit, object->object.type) &&
 			!TEST_FLAG(object->object.flags, _object_invisible_bit) &&
-			((struct unit_datum *)object_get_and_verify_type(object_index, _object_mask_unit))->unit.active_camouflage < 1.f &&
+			unit_get(object_index)->unit.active_camouflage < 1.f &&
 			sphere_intersects_cone3d(&object->object.bounding_sphere_center, object->object.bounding_sphere_radius, position, direction, distance, angle_sine, angle_cosine))
 		{
 			if (TEST_FLAG(_object_mask_biped, object->object.type) &&
 				!TEST_FLAG(object->object.damage_flags, _object_dead_bit) &&
 				object_index != ignore_object_index &&
 				game_team_is_enemy(ignore_team_index, object->object.owner_team_index) &&
-				!TEST_FLAG(((struct unit_definition *)tag_get(BIPED_DEFINITION_TAG, object->definition_index))->unit.flags, _unit_ignored_by_autoaiming_bit))
+				!TEST_FLAG(biped_definition_get(object->definition_index)->unit.flags, _unit_ignored_by_autoaiming_bit))
 			{
 				struct aim_assist_target target;
 
@@ -542,9 +542,12 @@ static void object_compute_autoaim_target(
 }
 
 static int __cdecl compare_targets(
-	struct aim_assist_target const *target0,
-	struct aim_assist_target const *target1)
+	void const *a,
+	void const *b)
 {
+	struct aim_assist_target const *target0 = (struct aim_assist_target const *)a;
+	struct aim_assist_target const *target1 = (struct aim_assist_target const *)b;
+
 	if (target0->autoaim_level > target1->autoaim_level)
 	{
 		return -1;

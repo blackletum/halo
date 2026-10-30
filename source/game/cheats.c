@@ -79,6 +79,8 @@ enum
 
 /* ---------- macros */
 
+#define CHEATS_FILE_PATH "d:\\cheats.txt" /* fake name */
+
 /* ---------- structures */
 
 /* ---------- prototypes */
@@ -165,7 +167,7 @@ void cheats_update(
 void cheats_load(
 	void)
 {
-	FILE *file = fopen("d:\\cheats.txt", "r");
+	FILE *file = fopen(CHEATS_FILE_PATH, "r");
 
 	if (file)
 	{

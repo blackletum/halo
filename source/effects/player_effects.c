@@ -45,7 +45,7 @@ enum
 
 struct continuous_player_effect_datum
 {
-	real rumble_frequencies[NUMBER_OF_RUMBLE_FREQUENCIES]; /* fake name */
+	real rumble_frequencies[NUMBER_OF_RUMBLE_FREQUENCIES];
 	real translational_shake;
 	real rotational_shake;
 };

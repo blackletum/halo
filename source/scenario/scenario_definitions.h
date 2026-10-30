@@ -93,6 +93,9 @@ enum
 
 /* ---------- macros */
 
+#define MAXIMUM_STARTING_WEAPONS_PER_PROFILE 2 /* fake name */
+#define MAXIMUM_STARTING_GRENADE_COUNTS_PER_PROFILE 4 /* fake name */
+
 #define scenario_definition_get(index) ((struct scenario *)tag_get(SCENARIO_GROUP_TAG, index)) /* fake name */
 
 /* ---------- structures */
@@ -241,11 +244,11 @@ struct starting_weapon_info
 
 struct scenario_starting_profile
 {
-	char name[32];
+	char name[TAG_STRING_LENGTH+1];
 	real starting_health;
 	real starting_shield;
-	struct starting_weapon_info starting_weapons[2];
-	byte starting_grenade_counts[4];
+	struct starting_weapon_info starting_weapons[MAXIMUM_STARTING_WEAPONS_PER_PROFILE];
+	byte starting_grenade_counts[MAXIMUM_STARTING_GRENADE_COUNTS_PER_PROFILE];
 	long unused[5];
 };
 

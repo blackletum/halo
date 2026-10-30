@@ -182,6 +182,9 @@ symbols in this file:
 
 /* ---------- macros */
 
+#define SECONDS_PER_TICK (1.f/TICKS_PER_SECOND) /* fake name */
+#define DEFAULT_RANDOM_SEED 0xdeadbeef /* fake name */
+
 /* ---------- structures */
 
 /* ---------- prototypes */
@@ -402,9 +405,7 @@ boolean game_load(
 	struct game_options *options)
 {
 	match_assert("c:\\halo\\SOURCE\\game\\game.c", 402, !game_globals->active);
-
 	match_assert("c:\\halo\\SOURCE\\game\\game.c", 403, !game_globals->map_loaded);
-
 	match_assert("c:\\halo\\SOURCE\\game\\game.c", 404, game_options_verify(options));
 
 	random_seed_debug_log(TRUE);
@@ -461,7 +462,6 @@ void game_initialize_for_new_map(
 	void)
 {
 	match_assert("c:\\halo\\SOURCE\\game\\game.c", 465, game_globals->map_loaded);
-
 	match_assert("c:\\halo\\SOURCE\\game\\game.c", 466, !game_globals->active);
 
 	set_random_seed(game_globals->options.random_seed);
@@ -629,7 +629,7 @@ void game_tick(
 	units_update();
 	ai_update();
 	players_update_before_game();
-	effects_update(game_globals->players_are_double_speed ? 1.f / (2 * TICKS_PER_SECOND) : 1.f / TICKS_PER_SECOND);
+	effects_update(game_globals->players_are_double_speed ? SECONDS_PER_TICK / 2 : SECONDS_PER_TICK);
 	lock_global_random_seed();
 	rumble_update();
 	first_person_weapons_update();
@@ -655,7 +655,7 @@ void game_options_new(
 	memset(options, 0, sizeof(*options));
 	options->code_version = 0;
 	options->difficulty = _game_difficulty_level_normal;
-	options->random_seed = 0xdeadbeef;
+	options->random_seed = DEFAULT_RANDOM_SEED;
 
 	return;
 }
