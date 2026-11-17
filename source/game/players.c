@@ -1699,6 +1699,7 @@ short player_get_starting_location_count(
 	struct scenario *scenario = global_scenario_get();
 	short starting_location_count = (short)scenario->players.count;
 
+#ifdef DEBUG
 	if (ai_debug.selected_encounter_index != NONE)
 	{
 		struct encounter_definition *encounter = TAG_BLOCK_GET_ELEMENT(&scenario->ai_encounters, DATUM_INDEX_TO_ABSOLUTE_INDEX(ai_debug.selected_encounter_index), struct encounter_definition);
@@ -1708,6 +1709,7 @@ short player_get_starting_location_count(
 			starting_location_count = (short)encounter->player_starting_locations.count;
 		}
 	}
+#endif
 
 	return starting_location_count;
 }
@@ -1723,6 +1725,7 @@ struct scenario_player *player_get_starting_location(
 		starting_location = TAG_BLOCK_GET_ELEMENT(&scenario->players, starting_location_index, struct scenario_player);
 	}
 
+#ifdef DEBUG
 	if (ai_debug.selected_encounter_index != NONE)
 	{
 		struct encounter_definition *encounter = TAG_BLOCK_GET_ELEMENT(&scenario->ai_encounters, DATUM_INDEX_TO_ABSOLUTE_INDEX(ai_debug.selected_encounter_index), struct encounter_definition);
@@ -1737,6 +1740,7 @@ struct scenario_player *player_get_starting_location(
 			}
 		}
 	}
+#endif
 
 	return starting_location;
 }
