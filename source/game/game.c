@@ -228,7 +228,9 @@ void game_initialize(
 	structures_initialize();
 	breakable_surfaces_initialize();
 	decals_initialize();
+#ifdef DEBUG
 	collision_log_initialize();
+#endif
 	players_initialize();
 	contrails_initialize();
 	particles_initialize();
@@ -246,7 +248,9 @@ void game_initialize(
 	recorded_animations_initialize();
 	cheats_initialize();
 	transport_initialize();
+#ifdef DEBUG
 	telnet_console_initialize();
+#endif
 	initialize_network_game_packets();
 	cinematic_initialize();
 	saved_game_files_initialize();
@@ -294,7 +298,9 @@ void game_dispose(
 	input_abstraction_dispose();
 	player_ui_dispose();
 	game_state_dispose();
+#ifdef DEBUG
 	telnet_console_dispose();
+#endif
 	transport_dispose();
 	bink_playback_dispose();
 	progress_bar_dispose();
@@ -566,7 +572,9 @@ void game_frame(
 	real game_dt = game_globals->players_are_double_speed ? dt * 0.5f : dt;
 
 	match_assert("c:\\halo\\SOURCE\\game\\game.c", 585, game_globals->active);
+#ifdef DEBUG
 	collision_log_begin_period(_collision_period_render_frame);
+#endif
 	particles_update(game_dt);
 	contrails_update(game_dt);
 	particle_systems_update(game_dt);
@@ -575,7 +583,9 @@ void game_frame(
 	scenario_frame_update(game_dt);
 	rasterizer_frame_update(game_dt);
 	numeric_countdown_timer_update();
+#ifdef DEBUG
 	collision_log_end_period();
+#endif
 
 	return;
 }
@@ -619,8 +629,10 @@ void remove_quitting_players_from_game(
 void game_tick(
 	void)
 {
+#ifdef DEBUG
 	profile_tick_start();
 	collision_log_begin_period(_collision_period_game_tick);
+#endif
 	real_math_reset_precision();
 	profile_enter(game_update_section);
 	match_assert("c:\\halo\\SOURCE\\game\\game.c", 653, game_globals->active);
@@ -643,8 +655,10 @@ void game_tick(
 	hud_update();
 	player_effect_update();
 	profile_exit(game_update_section);
+#ifdef DEBUG
 	collision_log_end_period();
 	profile_tick_end();
+#endif
 
 	return;
 }
