@@ -134,6 +134,7 @@ int main(
 static void fuck_code_in_the_eye(
 	void)
 {
+#ifdef DEBUG
 	DWORD flOldProtect;
 
 	PDM_WALK_MODSECT walk_modsect = NULL;
@@ -156,4 +157,5 @@ static void fuck_code_in_the_eye(
 			}
 		}
 	}
+#endif
 }
